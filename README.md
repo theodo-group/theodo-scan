@@ -192,11 +192,8 @@ The scan command automatically detects programming languages and runtimes used i
 
 **Supported Languages:**
 - **Node.js**: Detected via `.nvmrc`, `.node-version`, or `package.json`
-  - Resolves `.nvmrc` aliases (e.g., `lts/jod` → `v22.21.1`)
 - **Python**: Detected via `.python-version`, `requirements.txt`, `Pipfile`, or `pyproject.toml`
-- **Ruby**: Detected via `.ruby-version`, `Gemfile`, or `.rb` files
 - **Java**: Detected via `pom.xml`, `build.gradle`, or `.java` files
-- **Go**: Detected via `go.mod` or `.go` files
 - **PHP**: Detected via `composer.json` or `.php` files
 
 **Version Resolution:**
