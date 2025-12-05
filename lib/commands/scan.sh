@@ -29,8 +29,10 @@ Run a security scan using Trivy and generate a CycloneDX SBOM (Software Bill of 
 
 This command:
   1. Scans the current directory for vulnerabilities and dependencies
-  2. Generates an SBOM in CycloneDX format at .theodo/sbom.json
-  3. Updates the component name with your project identification
+  2. Detects programming languages and runtimes (Node.js, Python, Ruby, Java, Go, PHP)
+  3. Generates an SBOM in CycloneDX format at .theodo/sbom.json
+  4. Updates the component name with your project identification
+  5. Adds detected languages as framework components in the SBOM
 
 Options:
     -h, --help          Show this help message
@@ -101,6 +103,35 @@ EOF
     fi
 
     mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
+
+    # Detect and add programming languages as framework components
+    echo ""
+    print_info "Detecting programming languages..."
+
+    DETECTED_LANGUAGES=$(detect_project_languages)
+
+    if [ -n "$DETECTED_LANGUAGES" ] && [ "$DETECTED_LANGUAGES" != "[]" ]; then
+        print_info "Adding detected languages to SBOM..."
+
+        if ! jq --argjson languages "${DETECTED_LANGUAGES}" '
+            # Add language components to the components array
+            .components = ((.components // []) + $languages) |
+
+            # Add language bom-refs to main component dependencies
+            .dependencies[0].dependsOn = (
+                (.dependencies[0].dependsOn // []) +
+                ($languages | map(."bom-ref"))
+            )
+        ' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
+            print_error "Failed to add language components to SBOM"
+            exit 1
+        fi
+
+        mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
+        print_success "Language detection complete"
+    else
+        print_info "No languages detected"
+    fi
 
     # Display success message
     echo ""
