@@ -3,16 +3,11 @@
 # Hello command implementation
 
 cmd_hello() {
-    local name=""
     local show_help=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -n|--name)
-                name="$2"
-                shift 2
-                ;;
             -h|--help)
                 show_help=true
                 shift
@@ -30,30 +25,41 @@ cmd_hello() {
         cat << EOF
 Usage: theodo-scan hello [options]
 
-Display a hello message.
+Display a hello message and show your current configuration.
 
 Options:
-    -n, --name <name>   Specify a name to greet (optional)
     -h, --help          Show this help message
 
 Examples:
     theodo-scan hello
-    theodo-scan hello --name Alice
-    theodo-scan hello -n Bob
+
+Note: Requires .theodorc file. Run 'theodo-scan init' first.
 
 EOF
         exit 0
     fi
 
+    # Check for configuration file
+    if [ ! -f ".theodorc" ]; then
+        print_error "Configuration file .theodorc not found in current directory."
+        print_info "Please run 'theodo-scan init' first to create a configuration file."
+        exit 1
+    fi
+
+    # Load configuration
+    source ".theodorc"
+
     # Execute command
     print_header "🚀 Theodo Scan - Hello Command"
     echo ""
 
-    if [ -n "$name" ]; then
-        print_success "Hello, $name! Welcome to Theodo Scan."
-    else
-        print_success "Hello! Welcome to Theodo Scan."
-    fi
+    print_success "Hello! Welcome to Theodo Scan."
+
+    echo ""
+    print_info "Configuration loaded from .theodorc:"
+    print_info "  - Organization: $THEODO_SCAN_ORG"
+    print_info "  - Project: $THEODO_SCAN_PROJECT"
+    print_info "  - Component: $THEODO_SCAN_COMPONENT"
 
     echo ""
     print_info "This is a demonstration command."

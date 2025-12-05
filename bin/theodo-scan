@@ -37,6 +37,7 @@ Usage:
     theodo-scan <command> [options]
 
 Available Commands:
+    init            Initialize configuration file
     hello           Display a hello message
     help            Show this help message
     version         Show version information
@@ -46,8 +47,8 @@ Options:
     -v, --version   Show version information
 
 Examples:
+    theodo-scan init
     theodo-scan hello
-    theodo-scan hello --name John
     theodo-scan --help
 
 For more information about a specific command:
@@ -74,6 +75,10 @@ main() {
     shift
 
     case "$COMMAND" in
+        init)
+            source "$CLI_ROOT/lib/commands/init.sh"
+            cmd_init "$@"
+            ;;
         hello)
             source "$CLI_ROOT/lib/commands/hello.sh"
             cmd_hello "$@"

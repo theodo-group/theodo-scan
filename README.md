@@ -58,11 +58,36 @@ Note: Uninstalling only removes the symlink. Your repository remains intact.
 theodo-scan --help
 ```
 
+### Init Command
+
+Initialize a Theodo Scan configuration file in your project.
+
+```bash
+theodo-scan init
+```
+
+This command creates a `.theodorc` configuration file in your current directory with default values:
+- `THEODO_SCAN_ORG`: Set to your current directory name
+- `THEODO_SCAN_PROJECT`: Set to your current directory name  
+- `THEODO_SCAN_COMPONENT`: Set to "main"
+
+The component variable is useful for identifying different parts of your project (e.g., 'frontend', 'backend', 'api-service').
+
+After running init, edit `.theodorc` to customize these values for your project.
+
+**Note:** Most commands require a `.theodorc` file. Run `theodo-scan init` in your project directory before using other commands.
+
 ### Hello Command
+
+Display a hello message and show your current configuration.
+
+**Note:** Requires `.theodorc` file. Run `theodo-scan init` first.
 
 ```bash
 theodo-scan hello
 ```
+
+This command validates that your configuration file exists and displays the loaded configuration values.
 
 
 
