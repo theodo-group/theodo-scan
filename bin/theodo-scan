@@ -23,7 +23,7 @@ fi
 CLI_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source utility functions
-source "$CLI_ROOT/lib/utils/helpers.sh"
+source "$CLI_ROOT/lib/utils/utils.sh"
 
 # Version
 VERSION="1.0.0"
