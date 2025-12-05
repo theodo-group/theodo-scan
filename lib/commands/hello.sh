@@ -39,15 +39,8 @@ EOF
         exit 0
     fi
 
-    # Check for configuration file
-    if [ ! -f ".theodorc" ]; then
-        print_error "Configuration file .theodorc not found in current directory."
-        print_info "Please run 'theodo-scan init' first to create a configuration file."
-        exit 1
-    fi
-
-    # Load configuration
-    source ".theodorc"
+    # Validate and load configuration
+    validate_theodorc_config
 
     # Execute command
     print_header "🚀 Theodo Scan - Hello Command"

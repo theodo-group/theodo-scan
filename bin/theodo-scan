@@ -38,6 +38,7 @@ Usage:
 
 Available Commands:
     init            Initialize configuration file
+    scan            Run security scan and generate SBOM
     hello           Display a hello message
     help            Show this help message
     version         Show version information
@@ -48,6 +49,7 @@ Options:
 
 Examples:
     theodo-scan init
+    theodo-scan scan
     theodo-scan hello
     theodo-scan --help
 
@@ -82,6 +84,10 @@ main() {
         hello)
             source "$CLI_ROOT/lib/commands/hello.sh"
             cmd_hello "$@"
+            ;;
+        scan)
+            source "$CLI_ROOT/lib/commands/scan.sh"
+            cmd_scan "$@"
             ;;
         help|--help|-h)
             show_help

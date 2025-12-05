@@ -7,6 +7,8 @@ This tool is a CLI built using bash scripts. All tools used by the bash script a
 
 - Linux or macOS
 - Bash 4.0 or higher
+- trivy - [Installation Guide](https://trivy.dev/docs/latest/getting-started/installation/)
+- jq - [Installation Guide](https://jqlang.github.io/jq/download/)
 
 ## Install
 
@@ -76,6 +78,40 @@ The component variable is useful for identifying different parts of your project
 After running init, edit `.theodorc` to customize these values for your project.
 
 **Note:** Most commands require a `.theodorc` file. Run `theodo-scan init` in your project directory before using other commands.
+
+### Scan Command
+
+Run a security scan using Trivy and generate a CycloneDX SBOM (Software Bill of Materials).
+
+**Note:** Requires `.theodorc` file. Run `theodo-scan init` first.
+
+```bash
+theodo-scan scan
+```
+
+This command:
+1. Scans the current directory for vulnerabilities and dependencies using Trivy
+2. Generates a CycloneDX SBOM (Software Bill of Materials) in JSON format
+3. Saves the SBOM to `.theodo/sbom.json`
+4. Updates the component name in the SBOM metadata to `{ORG}-{PROJECT}-{COMPONENT}` based on your `.theodorc` configuration
+
+The SBOM includes:
+- Complete list of project dependencies (components)
+- Dependency relationships
+- Known vulnerabilities
+- Metadata about the scan and tools used
+
+The component name in the SBOM will be formatted as: `THEODO_SCAN_ORG-THEODO_SCAN_PROJECT-THEODO_SCAN_COMPONENT`
+
+**Example:**
+If your `.theodorc` contains:
+- `THEODO_SCAN_ORG="acme-corp"`
+- `THEODO_SCAN_PROJECT="web-api"`
+- `THEODO_SCAN_COMPONENT="backend"`
+
+The SBOM will have `metadata.component.name` set to: `"acme-corp-web-api-backend"`
+
+**Output Location:** `.theodo/sbom.json`
 
 ### Hello Command
 
