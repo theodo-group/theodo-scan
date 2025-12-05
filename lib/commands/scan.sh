@@ -76,12 +76,27 @@ EOF
 
     echo ""
 
-    # Modify SBOM component name
+    # Modify SBOM component name and add metadata properties
     COMPONENT_NAME="${THEODO_SCAN_ORG}-${THEODO_SCAN_PROJECT}-${THEODO_SCAN_COMPONENT}"
-    print_info "Updating SBOM component name to: $COMPONENT_NAME"
+    print_info "Updating SBOM metadata..."
+    print_info "  - Component name: $COMPONENT_NAME"
+    print_info "  - Organization: $THEODO_SCAN_ORG"
+    print_info "  - Project: $THEODO_SCAN_PROJECT"
+    print_info "  - Component: $THEODO_SCAN_COMPONENT"
 
-    if ! jq --arg name "${COMPONENT_NAME}" '.metadata.component.name = $name' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
-        print_error "Failed to update SBOM component name"
+    if ! jq --arg name "${COMPONENT_NAME}" \
+            --arg org "${THEODO_SCAN_ORG}" \
+            --arg project "${THEODO_SCAN_PROJECT}" \
+            --arg component "${THEODO_SCAN_COMPONENT}" '
+        .metadata.component.name = $name |
+        .metadata.properties = (.metadata.properties // []) |
+        .metadata.properties += [
+            {"name": "theodo:org", "value": $org},
+            {"name": "theodo:project", "value": $project},
+            {"name": "theodo:component", "value": $component}
+        ]
+    ' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
+        print_error "Failed to update SBOM metadata"
         exit 1
     fi
 
