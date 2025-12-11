@@ -71,7 +71,7 @@ EOF
     print_info "Running Trivy scan..."
     echo ""
 
-    if ! trivy fs --format cyclonedx -o "${SBOM_FILE}" .; then
+    if ! trivy fs --include-dev-deps --format cyclonedx -o "${SBOM_FILE}" .; then
         print_error "Trivy scan failed"
         exit 1
     fi
