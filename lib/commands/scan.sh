@@ -48,7 +48,26 @@ EOF
     fi
 
     # Validate and load configuration
-    validate_theodorc_config
+    if ! validate_theodorc_config; then
+        # Config validation failed - run init
+        print_warning "Configuration file is missing or invalid."
+        print_info "Running init to create/fix configuration..."
+        echo ""
+
+        COMMANDS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        source "$COMMANDS_DIR/init.sh"
+        cmd_init
+
+        echo ""
+        print_info "Continuing with scan..."
+        echo ""
+
+        # Validate again after init
+        if ! validate_theodorc_config; then
+            print_error "Configuration is still invalid after init."
+            exit 1
+        fi
+    fi
 
     # Check required dependencies
     check_scan_dependencies
