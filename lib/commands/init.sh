@@ -82,6 +82,12 @@ export THEODO_SCAN_PROJECT="$dir_name"
 # Examples: 'frontend', 'backend', 'api-service', 'auth-service', 'main'
 # Use this to scan different components of a monorepo or microservices separately
 export THEODO_SCAN_COMPONENT="main"
+
+# S3 Bucket name - identifies which AWS S3 bucket the upload command should upload SBOM to
+export THEODO_SCAN_BUCKET_NAME=
+
+# AWS Profile name - identifies which profile to use when trying to upload SBOM to S3
+export THEODO_SCAN_AWS_PROFILE=
 EOF
 
     # Display success messages
@@ -91,6 +97,7 @@ EOF
     print_info "  - THEODO_SCAN_ORG: $dir_name"
     print_info "  - THEODO_SCAN_PROJECT: $dir_name"
     print_info "  - THEODO_SCAN_COMPONENT: main"
+    print_info "  - THEODO_SCAN_BUCKET_NAME: CHANGE_ME"
     echo ""
     print_info "Please edit .theodorc to customize these values for your project."
 }

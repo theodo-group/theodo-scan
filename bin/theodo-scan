@@ -39,6 +39,7 @@ Usage:
 Available Commands:
     init            Initialize configuration file
     scan            Run security scan and generate SBOM
+    upload          Upload SBOM to S3
     hello           Display a hello message
     help            Show this help message
     version         Show version information
@@ -50,6 +51,7 @@ Options:
 Examples:
     theodo-scan init
     theodo-scan scan
+    theodo-scan upload
     theodo-scan hello
     theodo-scan --help
 
@@ -88,6 +90,10 @@ main() {
         scan)
             source "$CLI_ROOT/lib/commands/scan.sh"
             cmd_scan "$@"
+            ;;
+        upload)
+            source "$CLI_ROOT/lib/commands/upload.sh"
+            cmd_upload "$@"
             ;;
         help|--help|-h)
             show_help

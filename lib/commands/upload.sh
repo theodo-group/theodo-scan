@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+
+# Upload command implementation
+
+cmd_upload() {
+    local show_help=false
+    local bucket=""
+    local sbom_file=".theodo/sbom.json"
+    local aws_profile=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help=true
+                shift
+                ;;
+            -b|--bucket)
+                bucket="$2"
+                shift 2
+                ;;
+            -f|--file)
+                sbom_file="$2"
+                shift 2
+                ;;
+            -p|--profile)
+                aws_profile="$2"
+                shift 2
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                echo "Run 'theodo-scan upload --help' for usage information."
+                exit 1
+                ;;
+        esac
+    done
+
+    # Show help if requested
+    if [ "$show_help" = true ]; then
+        cat << EOF
+Usage: theodo-scan upload [options]
+
+Upload an SBOM file to an S3 bucket.
+
+The SBOM will be uploaded to: s3://<bucket>/sboms/<project>/theodo-scan-sbom.json
+where <project> is extracted from the SBOM's metadata.properties (theodo:project).
+
+The bucket name can be specified via --bucket flag or configured in .theodorc
+as THEODO_SCAN_BUCKET_NAME. The AWS profile can be specified via --profile flag
+or configured in .theodorc as THEODO_SCAN_AWS_PROFILE.
+
+Options:
+    -b, --bucket <name>     S3 bucket name (overrides .theodorc)
+    -f, --file <path>       Path to SBOM file (default: .theodo/sbom.json)
+    -p, --profile <name>    AWS CLI profile to use (overrides .theodorc)
+    -h, --help              Show this help message
+
+Examples:
+    theodo-scan upload
+    theodo-scan upload --bucket my-bucket
+    theodo-scan upload --bucket my-bucket --profile my-aws-profile
+    theodo-scan upload --bucket my-bucket --file ./custom-sbom.json
+
+Required dependencies: aws (AWS CLI)
+
+EOF
+        exit 0
+    fi
+
+    # Check required dependencies
+    check_upload_dependencies
+
+    # Load config from .theodorc if needed
+    if [ -z "$bucket" ] || [ -z "$aws_profile" ]; then
+        if [ -f ".theodorc" ]; then
+            source ".theodorc"
+            if [ -z "$bucket" ]; then
+                bucket="${THEODO_SCAN_BUCKET_NAME:-}"
+            fi
+            if [ -z "$aws_profile" ]; then
+                aws_profile="${THEODO_SCAN_AWS_PROFILE:-}"
+            fi
+        fi
+    fi
+
+    # Validate bucket parameter
+    if [ -z "$bucket" ]; then
+        print_error "Missing required bucket name."
+        print_info "Either specify --bucket flag or set THEODO_SCAN_BUCKET_NAME in .theodorc"
+        exit 1
+    fi
+
+    # Validate AWS profile parameter
+    if [ -z "$aws_profile" ]; then
+        print_error "Missing required AWS profile."
+        print_info "Either specify --profile flag or set THEODO_SCAN_AWS_PROFILE in .theodorc"
+        exit 1
+    fi
+
+    # Validate SBOM file exists
+    if [ ! -f "$sbom_file" ]; then
+        print_error "SBOM file not found: $sbom_file"
+        print_info "Run 'theodo-scan scan' first to generate an SBOM, or specify a different file with --file."
+        exit 1
+    fi
+
+    # Display upload header
+    print_header "📤 Theodo Scan - Upload SBOM"
+    echo ""
+
+    # Extract project name from SBOM metadata
+    print_info "Reading SBOM metadata..."
+
+    local project
+    project=$(jq -r '.metadata.properties[] | select(.name == "theodo:project") | .value' "$sbom_file" 2>/dev/null)
+
+    if [ -z "$project" ] || [ "$project" = "null" ]; then
+        print_error "Could not extract 'theodo:project' from SBOM metadata"
+        print_info "Ensure the SBOM was generated with 'theodo-scan scan' and contains the required metadata."
+        exit 1
+    fi
+
+    print_info "  - Project: $project"
+
+    # Build S3 destination path
+    local s3_path="s3://${bucket}/sboms/${project}/theodo-scan-sbom.json"
+
+    print_info "  - Destination: $s3_path"
+    print_info "  - AWS Profile: $aws_profile"
+    echo ""
+
+    # Upload to S3
+    print_info "Uploading SBOM to S3..."
+
+    if ! aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path"; then
+        print_error "Failed to upload SBOM to S3"
+        exit 1
+    fi
+
+    # Display success message
+    echo ""
+    print_success "SBOM uploaded successfully!"
+    print_info "Location: $s3_path"
+    echo ""
+}
+
