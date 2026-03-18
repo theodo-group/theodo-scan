@@ -29,7 +29,8 @@ Initialize a new Theodo Scan configuration file.
 
 This command creates a .theodorc file in the current directory with
 default configuration values. You can edit this file to customize the
-settings for your project.
+settings for your project. If a .gitignore file exists in the current
+directory, .theodo/theodo-scan-sbom.json will be added to it.
 
 Options:
     -h, --help          Show this help message
@@ -89,6 +90,16 @@ export THEODO_SCAN_BUCKET_NAME="watchtower-prod-s3bucketbucket-ubzdhdmf"
 # AWS Profile name - identifies which profile to use when trying to upload SBOM to S3
 export THEODO_SCAN_AWS_PROFILE="watchtower"
 EOF
+
+    # Add .theodo/theodo-scan-sbom.json to .gitignore if it exists
+    if [ -f ".gitignore" ]; then
+        if ! grep -qxF '.theodo/theodo-scan-sbom.json' .gitignore; then
+            echo '.theodo/theodo-scan-sbom.json' >> .gitignore
+            print_success "Added .theodo/theodo-scan-sbom.json to .gitignore"
+        else
+            print_info ".theodo/theodo-scan-sbom.json already in .gitignore"
+        fi
+    fi
 
     # Display success messages
     print_success "Configuration file created: .theodorc"
