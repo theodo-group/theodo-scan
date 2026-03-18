@@ -73,8 +73,8 @@ This command creates a `.theodorc` configuration file in your current directory 
 - `THEODO_SCAN_ORG`: Set to your current directory name
 - `THEODO_SCAN_PROJECT`: Set to your current directory name
 - `THEODO_SCAN_COMPONENT`: Set to "main"
-- `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads (empty by default)
-- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile for uploads (empty by default)
+- `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads (default: `watchtower-prod-s3bucketbucket-ubzdhdmf`)
+- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile for uploads (default: `watchtower`)
 
 The component variable is useful for identifying different parts of your project (e.g., 'frontend', 'backend', 'api-service').
 
