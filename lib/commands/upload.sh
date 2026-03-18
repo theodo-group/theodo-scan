@@ -42,8 +42,8 @@ Usage: theodo-scan upload [options]
 
 Upload an SBOM file to an S3 bucket.
 
-The SBOM will be uploaded to: s3://<bucket>/sboms/<project>/theodo-scan-sbom.json
-where <project> is extracted from the SBOM's metadata.properties (theodo:project).
+The SBOM will be uploaded to: s3://<bucket>/sboms/<org>-<project>-<component>/theodo-scan-sbom.json
+where <org>, <project>, and <component> are extracted from the SBOM's metadata.properties.
 
 The bucket name can be specified via --bucket flag or configured in .theodorc
 as THEODO_SCAN_BUCKET_NAME. The AWS profile can be specified via --profile flag
@@ -111,8 +111,16 @@ EOF
     # Extract project name from SBOM metadata
     print_info "Reading SBOM metadata..."
 
-    local project
+    local org project component
+    org=$(jq -r '.metadata.properties[] | select(.name == "theodo:org") | .value' "$sbom_file" 2>/dev/null)
     project=$(jq -r '.metadata.properties[] | select(.name == "theodo:project") | .value' "$sbom_file" 2>/dev/null)
+    component=$(jq -r '.metadata.properties[] | select(.name == "theodo:component") | .value' "$sbom_file" 2>/dev/null)
+
+    if [ -z "$org" ] || [ "$org" = "null" ]; then
+        print_error "Could not extract 'theodo:org' from SBOM metadata"
+        print_info "Ensure the SBOM was generated with 'theodo-scan scan' and contains the required metadata."
+        exit 1
+    fi
 
     if [ -z "$project" ] || [ "$project" = "null" ]; then
         print_error "Could not extract 'theodo:project' from SBOM metadata"
@@ -120,10 +128,18 @@ EOF
         exit 1
     fi
 
+    if [ -z "$component" ] || [ "$component" = "null" ]; then
+        print_error "Could not extract 'theodo:component' from SBOM metadata"
+        print_info "Ensure the SBOM was generated with 'theodo-scan scan' and contains the required metadata."
+        exit 1
+    fi
+
+    print_info "  - Org: $org"
     print_info "  - Project: $project"
+    print_info "  - Component: $component"
 
     # Build S3 destination path
-    local s3_path="s3://${bucket}/sboms/${project}/theodo-scan-sbom.json"
+    local s3_path="s3://${bucket}/sboms/${org}-${project}-${component}/theodo-scan-sbom.json"
 
     print_info "  - Destination: $s3_path"
     print_info "  - AWS Profile: $aws_profile"

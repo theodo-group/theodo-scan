@@ -287,7 +287,7 @@ Upload an SBOM file to an S3 bucket.
 theodo-scan upload
 ```
 
-The SBOM is uploaded to `s3://<bucket>/sboms/<project>/theodo-scan-sbom.json`, where `<project>` is extracted from the SBOM's `metadata.properties` (`theodo:project`).
+The SBOM is uploaded to `s3://<bucket>/sboms/<org>-<project>-<component>/theodo-scan-sbom.json`, where `<org>`, `<project>`, and `<component>` are extracted from the SBOM's `metadata.properties`.
 
 **Options:**
 
