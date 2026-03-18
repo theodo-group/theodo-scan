@@ -9,6 +9,7 @@ This tool is a CLI built using bash scripts. All tools used by the bash script a
 - Bash 4.0 or higher
 - trivy - [Installation Guide](https://trivy.dev/docs/latest/getting-started/installation/)
 - jq - [Installation Guide](https://jqlang.github.io/jq/download/)
+- aws - [Installation Guide](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (required for `upload` command)
 
 ## Install
 
@@ -70,8 +71,10 @@ theodo-scan init
 
 This command creates a `.theodorc` configuration file in your current directory with default values:
 - `THEODO_SCAN_ORG`: Set to your current directory name
-- `THEODO_SCAN_PROJECT`: Set to your current directory name  
+- `THEODO_SCAN_PROJECT`: Set to your current directory name
 - `THEODO_SCAN_COMPONENT`: Set to "main"
+- `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads (empty by default)
+- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile for uploads (empty by default)
 
 The component variable is useful for identifying different parts of your project (e.g., 'frontend', 'backend', 'api-service').
 
@@ -245,6 +248,44 @@ Languages are also added to the main component's dependency tree in the `depende
     }
   ]
 }
+```
+
+### Upload Command
+
+Upload an SBOM file to an S3 bucket.
+
+**Note:** Requires `.theodorc` file. Run `theodo-scan init` first.
+
+```bash
+theodo-scan upload
+```
+
+The SBOM is uploaded to `s3://<bucket>/sboms/<project>/theodo-scan-sbom.json`, where `<project>` is extracted from the SBOM's `metadata.properties` (`theodo:project`).
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `-b, --bucket <name>` | S3 bucket name (overrides `.theodorc`) |
+| `-f, --file <path>` | Path to SBOM file (default: `.theodo/sbom.json`) |
+| `-p, --profile <name>` | AWS CLI profile to use (overrides `.theodorc`) |
+| `-h, --help` | Show help message |
+
+**Configuration:**
+
+The bucket name and AWS profile can be configured in `.theodorc`:
+- `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads
+- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile to use
+
+Command-line flags (`--bucket`, `--profile`) take precedence over `.theodorc` values.
+
+**Examples:**
+
+```bash
+theodo-scan upload
+theodo-scan upload --bucket my-bucket
+theodo-scan upload --bucket my-bucket --profile my-aws-profile
+theodo-scan upload --bucket my-bucket --file ./custom-sbom.json
 ```
 
 ### Hello Command
