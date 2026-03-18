@@ -250,6 +250,33 @@ Languages are also added to the main component's dependency tree in the `depende
 }
 ```
 
+### Run Command
+
+Run a security scan and upload the resulting SBOM to S3 in one step.
+
+**Note:** Requires `.theodorc` file. Run `theodo-scan init` first.
+
+```bash
+theodo-scan run
+```
+
+This command is a convenience shortcut that runs `scan` followed by `upload`.
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `-b, --bucket <name>` | S3 bucket name (overrides `.theodorc`) |
+| `-p, --profile <name>` | AWS CLI profile to use (overrides `.theodorc`) |
+| `-h, --help` | Show help message |
+
+**Examples:**
+
+```bash
+theodo-scan run
+theodo-scan run --bucket my-bucket --profile my-aws-profile
+```
+
 ### Upload Command
 
 Upload an SBOM file to an S3 bucket.
