@@ -132,7 +132,24 @@ EOF
     # Upload to S3
     print_info "Uploading SBOM to S3..."
 
-    if ! aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path"; then
+    local upload_output
+    local upload_exit_code=0
+    upload_output=$(aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path" 2>&1) || upload_exit_code=$?
+
+    # If upload failed due to expired SSO token, attempt auto-login and retry
+    if [[ $upload_exit_code -ne 0 ]] && echo "$upload_output" | grep -q "Token has expired and refresh failed\|Error when retrieving token from sso\|The SSO session associated with this profile has expired"; then
+        print_warning "SSO token expired. Attempting login with profile '$aws_profile'..."
+        if ! aws sso login --profile "$aws_profile"; then
+            print_error "SSO login failed"
+            exit 1
+        fi
+        print_info "Retrying upload..."
+        if ! aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path"; then
+            print_error "Failed to upload SBOM to S3"
+            exit 1
+        fi
+    elif [[ $upload_exit_code -ne 0 ]]; then
+        echo "$upload_output" >&2
         print_error "Failed to upload SBOM to S3"
         exit 1
     fi
