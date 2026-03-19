@@ -29,7 +29,8 @@ Initialize a new Theodo Scan configuration file.
 
 This command creates a .theodorc file in the current directory with
 default configuration values. You can edit this file to customize the
-settings for your project.
+settings for your project. If a .gitignore file exists in the current
+directory, .theodo/theodo-scan-sbom.json will be added to it.
 
 Options:
     -h, --help          Show this help message
@@ -84,11 +85,21 @@ export THEODO_SCAN_PROJECT="$dir_name"
 export THEODO_SCAN_COMPONENT="main"
 
 # S3 Bucket name - identifies which AWS S3 bucket the upload command should upload SBOM to
-export THEODO_SCAN_BUCKET_NAME=
+export THEODO_SCAN_BUCKET_NAME="watchtower-prod-s3bucketbucket-ubzdhdmf"
 
 # AWS Profile name - identifies which profile to use when trying to upload SBOM to S3
-export THEODO_SCAN_AWS_PROFILE=
+export THEODO_SCAN_AWS_PROFILE="watchtower"
 EOF
+
+    # Add .theodo/theodo-scan-sbom.json to .gitignore if it exists
+    if [ -f ".gitignore" ]; then
+        if ! grep -qxF '.theodo/theodo-scan-sbom.json' .gitignore; then
+            echo '.theodo/theodo-scan-sbom.json' >> .gitignore
+            print_success "Added .theodo/theodo-scan-sbom.json to .gitignore"
+        else
+            print_info ".theodo/theodo-scan-sbom.json already in .gitignore"
+        fi
+    fi
 
     # Display success messages
     print_success "Configuration file created: .theodorc"
@@ -97,7 +108,8 @@ EOF
     print_info "  - THEODO_SCAN_ORG: $dir_name"
     print_info "  - THEODO_SCAN_PROJECT: $dir_name"
     print_info "  - THEODO_SCAN_COMPONENT: main"
-    print_info "  - THEODO_SCAN_BUCKET_NAME: CHANGE_ME"
+    print_info "  - THEODO_SCAN_BUCKET_NAME: watchtower-prod-s3bucketbucket-ubzdhdmf"
+    print_info "  - THEODO_SCAN_AWS_PROFILE: watchtower"
     echo ""
     print_info "Please edit .theodorc to customize these values for your project."
 }

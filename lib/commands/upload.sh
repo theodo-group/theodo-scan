@@ -42,8 +42,8 @@ Usage: theodo-scan upload [options]
 
 Upload an SBOM file to an S3 bucket.
 
-The SBOM will be uploaded to: s3://<bucket>/sboms/<project>/theodo-scan-sbom.json
-where <project> is extracted from the SBOM's metadata.properties (theodo:project).
+The SBOM will be uploaded to: s3://<bucket>/sboms/<org>-<project>-<component>/theodo-scan-sbom.json
+where <org>, <project>, and <component> are extracted from the SBOM's metadata.properties.
 
 The bucket name can be specified via --bucket flag or configured in .theodorc
 as THEODO_SCAN_BUCKET_NAME. The AWS profile can be specified via --profile flag
@@ -111,8 +111,16 @@ EOF
     # Extract project name from SBOM metadata
     print_info "Reading SBOM metadata..."
 
-    local project
+    local org project component
+    org=$(jq -r '.metadata.properties[] | select(.name == "theodo:org") | .value' "$sbom_file" 2>/dev/null)
     project=$(jq -r '.metadata.properties[] | select(.name == "theodo:project") | .value' "$sbom_file" 2>/dev/null)
+    component=$(jq -r '.metadata.properties[] | select(.name == "theodo:component") | .value' "$sbom_file" 2>/dev/null)
+
+    if [ -z "$org" ] || [ "$org" = "null" ]; then
+        print_error "Could not extract 'theodo:org' from SBOM metadata"
+        print_info "Ensure the SBOM was generated with 'theodo-scan scan' and contains the required metadata."
+        exit 1
+    fi
 
     if [ -z "$project" ] || [ "$project" = "null" ]; then
         print_error "Could not extract 'theodo:project' from SBOM metadata"
@@ -120,10 +128,18 @@ EOF
         exit 1
     fi
 
+    if [ -z "$component" ] || [ "$component" = "null" ]; then
+        print_error "Could not extract 'theodo:component' from SBOM metadata"
+        print_info "Ensure the SBOM was generated with 'theodo-scan scan' and contains the required metadata."
+        exit 1
+    fi
+
+    print_info "  - Org: $org"
     print_info "  - Project: $project"
+    print_info "  - Component: $component"
 
     # Build S3 destination path
-    local s3_path="s3://${bucket}/sboms/${project}/theodo-scan-sbom.json"
+    local s3_path="s3://${bucket}/sboms/${org}-${project}-${component}/theodo-scan-sbom.json"
 
     print_info "  - Destination: $s3_path"
     print_info "  - AWS Profile: $aws_profile"
@@ -132,7 +148,24 @@ EOF
     # Upload to S3
     print_info "Uploading SBOM to S3..."
 
-    if ! aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path"; then
+    local upload_output
+    local upload_exit_code=0
+    upload_output=$(aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path" 2>&1) || upload_exit_code=$?
+
+    # If upload failed due to expired SSO token, attempt auto-login and retry
+    if [[ $upload_exit_code -ne 0 ]] && echo "$upload_output" | grep -q "Token has expired and refresh failed\|Error when retrieving token from sso\|The SSO session associated with this profile has expired"; then
+        print_warning "SSO token expired. Attempting login with profile '$aws_profile'..."
+        if ! aws sso login --profile "$aws_profile"; then
+            print_error "SSO login failed"
+            exit 1
+        fi
+        print_info "Retrying upload..."
+        if ! aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path"; then
+            print_error "Failed to upload SBOM to S3"
+            exit 1
+        fi
+    elif [[ $upload_exit_code -ne 0 ]]; then
+        echo "$upload_output" >&2
         print_error "Failed to upload SBOM to S3"
         exit 1
     fi

@@ -101,7 +101,7 @@ detect_php_version() {
     # Fallback to installed version
     if command_exists "php"; then
         local installed_version
-        installed_version=$(php --version 2>&1 | grep -oP 'PHP \K[0-9.]+' | head -1)
+        installed_version=$(php --version 2>&1 | sed -n 's/.*PHP \([0-9.]*\).*/\1/p' | head -1)
         if [ -n "$installed_version" ]; then
             version=$(parse_php_version "$installed_version")
             if [ -n "$version" ]; then
