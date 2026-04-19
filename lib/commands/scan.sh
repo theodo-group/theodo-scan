@@ -33,6 +33,7 @@ This command:
   3. Generates an SBOM in CycloneDX format at .theodo/sbom.json
   4. Updates the component name with your project identification
   5. Adds detected languages as framework components in the SBOM
+  6. Flags dev-only dependencies with a "theodo:dev" property
 
 Options:
     -h, --help          Show this help message
@@ -60,6 +61,7 @@ EOF
     # Define output paths
     SBOM_DIR=".theodo"
     SBOM_FILE="${SBOM_DIR}/sbom.json"
+    SBOM_PROD_FILE="${SBOM_DIR}/sbom.prod.json"
 
     # Create .theodo directory if it doesn't exist
     if [ ! -d "$SBOM_DIR" ]; then
@@ -67,14 +69,48 @@ EOF
         print_info "Created directory: $SBOM_DIR"
     fi
 
-    # Run Trivy scan
-    print_info "Running Trivy scan..."
+    # Run Trivy scan (production dependencies only, used to identify dev-only deps)
+    print_info "Running Trivy scan (production dependencies)..."
+    echo ""
+
+    if ! trivy fs --format cyclonedx -o "${SBOM_PROD_FILE}" .; then
+        print_error "Trivy scan failed (production dependencies)"
+        exit 1
+    fi
+
+    echo ""
+
+    # Run Trivy scan (all dependencies including dev)
+    print_info "Running Trivy scan (all dependencies including dev)..."
     echo ""
 
     if ! trivy fs --include-dev-deps --format cyclonedx -o "${SBOM_FILE}" .; then
         print_error "Trivy scan failed"
         exit 1
     fi
+
+    echo ""
+
+    # Flag dev-only components (present in full SBOM but not in production SBOM)
+    print_info "Flagging dev-only dependencies..."
+
+    PROD_REFS=$(jq '[.components[]?."bom-ref"]' "${SBOM_PROD_FILE}")
+
+    if ! jq --argjson prod "${PROD_REFS}" '
+        .components |= map(
+            if (."bom-ref" as $r | $prod | index($r)) then
+                .
+            else
+                .properties = ((.properties // []) + [{"name": "theodo:dev", "value": "true"}])
+            end
+        )
+    ' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
+        print_error "Failed to flag dev-only dependencies"
+        exit 1
+    fi
+
+    mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
+    rm -f "${SBOM_PROD_FILE}"
 
     echo ""
 

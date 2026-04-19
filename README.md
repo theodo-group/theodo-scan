@@ -100,6 +100,7 @@ This command:
 5. Enhances the SBOM with custom metadata based on your `.theodorc` configuration:
    - Updates the component name to `{ORG}-{PROJECT}-{COMPONENT}`
    - Adds structured metadata properties for organization, project, and component
+6. Flags dev-only dependencies with a `theodo:dev` property
 
 **Output Location:** `.theodo/sbom.json`
 
@@ -188,6 +189,10 @@ The `theodo-scan scan` command makes the following modifications to the Trivy-ge
    - Policy enforcement based on organizational structure
 
    **Technical Implementation:** Uses `jq` to update the component name and add custom properties after Trivy generates the initial SBOM. The `theodo:` namespace prefix follows CycloneDX best practices for custom properties and prevents conflicts with other tools.
+
+3. **Dev-Only Dependency Flagging**: Components that are only used as development dependencies are tagged with a `theodo:dev` property set to `"true"` in the component's `properties` array. Production dependencies are left untagged.
+
+   **Technical Implementation:** Trivy is run twice — once without `--include-dev-deps` (production-only) and once with it (all dependencies). Any component present in the full SBOM but absent from the production SBOM is considered dev-only and flagged. The intermediate production SBOM is removed after the diff.
 
 #### Language Detection
 
