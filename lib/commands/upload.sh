@@ -46,13 +46,20 @@ The SBOM will be uploaded to: s3://<bucket>/sboms/<org>-<project>-<component>/th
 where <org>, <project>, and <component> are extracted from the SBOM's metadata.properties.
 
 The bucket name can be specified via --bucket flag or configured in .theodorc
-as THEODO_SCAN_BUCKET_NAME. The AWS profile can be specified via --profile flag
-or configured in .theodorc as THEODO_SCAN_AWS_PROFILE.
+as THEODO_SCAN_BUCKET_NAME.
+
+For local runs, an AWS CLI profile is required. It can be specified via --profile
+flag or configured in .theodorc as THEODO_SCAN_LOCAL_AWS_PROFILE.
+
+In CI (when the CI environment variable is set), the --profile flag is ignored
+and the default AWS credential chain is used. Configure your CI to assume an
+IAM role via OIDC (recommended) or expose AWS credentials as environment
+variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
 
 Options:
     -b, --bucket <name>     S3 bucket name (overrides .theodorc)
     -f, --file <path>       Path to SBOM file (default: .theodo/sbom.json)
-    -p, --profile <name>    AWS CLI profile to use (overrides .theodorc)
+    -p, --profile <name>    AWS CLI profile to use (local only; overrides .theodorc)
     -h, --help              Show this help message
 
 Examples:
@@ -78,7 +85,7 @@ EOF
                 bucket="${THEODO_SCAN_BUCKET_NAME:-}"
             fi
             if [ -z "$aws_profile" ]; then
-                aws_profile="${THEODO_SCAN_AWS_PROFILE:-}"
+                aws_profile="${THEODO_SCAN_LOCAL_AWS_PROFILE:-}"
             fi
         fi
     fi
@@ -90,10 +97,17 @@ EOF
         exit 1
     fi
 
-    # Validate AWS profile parameter
-    if [ -z "$aws_profile" ]; then
+    # In CI, skip the AWS profile entirely and rely on the default credential chain
+    # (OIDC-assumed role or AWS_* environment variables).
+    if [ -n "${CI:-}" ]; then
+        if [ -n "$aws_profile" ]; then
+            print_info "CI environment detected — ignoring AWS profile '$aws_profile' and using default credential chain."
+        fi
+        aws_profile=""
+    elif [ -z "$aws_profile" ]; then
         print_error "Missing required AWS profile."
-        print_info "Either specify --profile flag or set THEODO_SCAN_AWS_PROFILE in .theodorc"
+        print_info "Either specify --profile flag or set THEODO_SCAN_LOCAL_AWS_PROFILE in .theodorc"
+        print_info "(In CI, set the CI environment variable and configure AWS credentials via OIDC or env vars.)"
         exit 1
     fi
 
@@ -142,25 +156,35 @@ EOF
     local s3_path="s3://${bucket}/sboms/${org}-${project}-${component}/theodo-scan-sbom.json"
 
     print_info "  - Destination: $s3_path"
-    print_info "  - AWS Profile: $aws_profile"
+    if [ -n "$aws_profile" ]; then
+        print_info "  - AWS Profile: $aws_profile"
+    else
+        print_info "  - AWS credentials: default chain (CI mode)"
+    fi
     echo ""
+
+    # Build AWS CLI args (omit --profile in CI / when not configured)
+    local aws_args=()
+    if [ -n "$aws_profile" ]; then
+        aws_args+=("--profile" "$aws_profile")
+    fi
 
     # Upload to S3
     print_info "Uploading SBOM to S3..."
 
     local upload_output
     local upload_exit_code=0
-    upload_output=$(aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path" 2>&1) || upload_exit_code=$?
+    upload_output=$(aws "${aws_args[@]}" s3 cp "$sbom_file" "$s3_path" 2>&1) || upload_exit_code=$?
 
-    # If upload failed due to expired SSO token, attempt auto-login and retry
-    if [[ $upload_exit_code -ne 0 ]] && echo "$upload_output" | grep -q "Token has expired and refresh failed\|Error when retrieving token from sso\|The SSO session associated with this profile has expired"; then
+    # If upload failed due to expired SSO token, attempt auto-login and retry (local only).
+    if [[ $upload_exit_code -ne 0 ]] && [ -n "$aws_profile" ] && echo "$upload_output" | grep -q "Token has expired and refresh failed\|Error when retrieving token from sso\|The SSO session associated with this profile has expired"; then
         print_warning "SSO token expired. Attempting login with profile '$aws_profile'..."
         if ! aws sso login --profile "$aws_profile"; then
             print_error "SSO login failed"
             exit 1
         fi
         print_info "Retrying upload..."
-        if ! aws --profile "$aws_profile" s3 cp "$sbom_file" "$s3_path"; then
+        if ! aws "${aws_args[@]}" s3 cp "$sbom_file" "$s3_path"; then
             print_error "Failed to upload SBOM to S3"
             exit 1
         fi

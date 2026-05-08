@@ -74,7 +74,7 @@ This command creates a `.theodorc` configuration file in your current directory 
 - `THEODO_SCAN_PROJECT`: Set to your current directory name
 - `THEODO_SCAN_COMPONENT`: Set to "main"
 - `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads (default: `watchtower-prod-s3bucketbucket-ubzdhdmf`)
-- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile for uploads (default: `watchtower`)
+- `THEODO_SCAN_LOCAL_AWS_PROFILE`: AWS CLI profile for **local** uploads (default: `watchtower`). Ignored in CI — see [ci-setup.md](ci-setup.md).
 
 The component variable is useful for identifying different parts of your project (e.g., 'frontend', 'backend', 'api-service').
 
@@ -272,7 +272,7 @@ This command is a convenience shortcut that runs `scan` followed by `upload`.
 | Flag | Description |
 |------|-------------|
 | `-b, --bucket <name>` | S3 bucket name (overrides `.theodorc`) |
-| `-p, --profile <name>` | AWS CLI profile to use (overrides `.theodorc`) |
+| `-p, --profile <name>` | AWS CLI profile to use (local only; overrides `.theodorc`) |
 | `-h, --help` | Show help message |
 
 **Examples:**
@@ -281,6 +281,8 @@ This command is a convenience shortcut that runs `scan` followed by `upload`.
 theodo-scan run
 theodo-scan run --bucket my-bucket --profile my-aws-profile
 ```
+
+In CI, omit `--profile` and configure credentials via OIDC or environment variables — see [ci-setup.md](ci-setup.md).
 
 ### Upload Command
 
@@ -300,14 +302,14 @@ The SBOM is uploaded to `s3://<bucket>/sboms/<org>-<project>-<component>/theodo-
 |------|-------------|
 | `-b, --bucket <name>` | S3 bucket name (overrides `.theodorc`) |
 | `-f, --file <path>` | Path to SBOM file (default: `.theodo/sbom.json`) |
-| `-p, --profile <name>` | AWS CLI profile to use (overrides `.theodorc`) |
+| `-p, --profile <name>` | AWS CLI profile to use (local only; overrides `.theodorc`) |
 | `-h, --help` | Show help message |
 
 **Configuration:**
 
-The bucket name and AWS profile can be configured in `.theodorc`:
+The bucket name and (local) AWS profile can be configured in `.theodorc`:
 - `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads
-- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile to use
+- `THEODO_SCAN_LOCAL_AWS_PROFILE`: AWS CLI profile to use for local runs (ignored in CI)
 
 Command-line flags (`--bucket`, `--profile`) take precedence over `.theodorc` values.
 
@@ -319,6 +321,10 @@ theodo-scan upload --bucket my-bucket
 theodo-scan upload --bucket my-bucket --profile my-aws-profile
 theodo-scan upload --bucket my-bucket --file ./custom-sbom.json
 ```
+
+#### CI usage
+
+For CI behavior, AWS authentication (OIDC + IAM role policy), and copy-pasteable per-provider job snippets (GitHub Actions, GitLab CI, Bitbucket Pipelines, Azure Pipelines), see [ci-setup.md](ci-setup.md).
 
 ### Hello Command
 
