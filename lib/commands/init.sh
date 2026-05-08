@@ -87,8 +87,10 @@ export THEODO_SCAN_COMPONENT="main"
 # S3 Bucket name - identifies which AWS S3 bucket the upload command should upload SBOM to
 export THEODO_SCAN_BUCKET_NAME="watchtower-prod-s3bucketbucket-ubzdhdmf"
 
-# AWS Profile name - identifies which profile to use when trying to upload SBOM to S3
-export THEODO_SCAN_AWS_PROFILE="watchtower"
+# AWS Profile name for LOCAL runs only - identifies which AWS CLI profile to use when uploading SBOM to S3.
+# In CI (when the CI environment variable is set), this value is ignored and the default AWS
+# credential chain is used (OIDC-assumed role or AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars).
+export THEODO_SCAN_LOCAL_AWS_PROFILE="watchtower"
 EOF
 
     # Add .theodo/sbom.json to .gitignore if it exists
@@ -109,7 +111,7 @@ EOF
     print_info "  - THEODO_SCAN_PROJECT: $dir_name"
     print_info "  - THEODO_SCAN_COMPONENT: main"
     print_info "  - THEODO_SCAN_BUCKET_NAME: watchtower-prod-s3bucketbucket-ubzdhdmf"
-    print_info "  - THEODO_SCAN_AWS_PROFILE: watchtower"
+    print_info "  - THEODO_SCAN_LOCAL_AWS_PROFILE: watchtower"
     echo ""
     print_info "Please edit .theodorc to customize these values for your project."
 }

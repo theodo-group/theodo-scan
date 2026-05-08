@@ -41,7 +41,7 @@ This command is a convenience shortcut that runs 'scan' followed by 'upload'.
 
 Options:
     -b, --bucket <name>     S3 bucket name (overrides .theodorc)
-    -p, --profile <name>    AWS CLI profile to use (overrides .theodorc)
+    -p, --profile <name>    AWS CLI profile to use (local only; overrides .theodorc)
     -h, --help              Show this help message
 
 Examples:
@@ -49,6 +49,8 @@ Examples:
     theodo-scan run --bucket my-bucket --profile my-aws-profile
 
 Note: Requires .theodorc file. Run 'theodo-scan init' first.
+In CI (when the CI environment variable is set), the AWS profile is ignored
+and the default AWS credential chain is used.
 Required dependencies: trivy, jq, aws (AWS CLI)
 
 EOF

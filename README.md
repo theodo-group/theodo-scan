@@ -74,7 +74,7 @@ This command creates a `.theodorc` configuration file in your current directory 
 - `THEODO_SCAN_PROJECT`: Set to your current directory name
 - `THEODO_SCAN_COMPONENT`: Set to "main"
 - `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads (default: `watchtower-prod-s3bucketbucket-ubzdhdmf`)
-- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile for uploads (default: `watchtower`)
+- `THEODO_SCAN_LOCAL_AWS_PROFILE`: AWS CLI profile for **local** uploads (default: `watchtower`). Ignored in CI — see [CI usage](#ci-usage).
 
 The component variable is useful for identifying different parts of your project (e.g., 'frontend', 'backend', 'api-service').
 
@@ -272,7 +272,7 @@ This command is a convenience shortcut that runs `scan` followed by `upload`.
 | Flag | Description |
 |------|-------------|
 | `-b, --bucket <name>` | S3 bucket name (overrides `.theodorc`) |
-| `-p, --profile <name>` | AWS CLI profile to use (overrides `.theodorc`) |
+| `-p, --profile <name>` | AWS CLI profile to use (local only; overrides `.theodorc`) |
 | `-h, --help` | Show help message |
 
 **Examples:**
@@ -281,6 +281,8 @@ This command is a convenience shortcut that runs `scan` followed by `upload`.
 theodo-scan run
 theodo-scan run --bucket my-bucket --profile my-aws-profile
 ```
+
+In CI, omit `--profile` and configure credentials via OIDC or environment variables — see [CI usage](#ci-usage).
 
 ### Upload Command
 
@@ -300,14 +302,14 @@ The SBOM is uploaded to `s3://<bucket>/sboms/<org>-<project>-<component>/theodo-
 |------|-------------|
 | `-b, --bucket <name>` | S3 bucket name (overrides `.theodorc`) |
 | `-f, --file <path>` | Path to SBOM file (default: `.theodo/sbom.json`) |
-| `-p, --profile <name>` | AWS CLI profile to use (overrides `.theodorc`) |
+| `-p, --profile <name>` | AWS CLI profile to use (local only; overrides `.theodorc`) |
 | `-h, --help` | Show help message |
 
 **Configuration:**
 
-The bucket name and AWS profile can be configured in `.theodorc`:
+The bucket name and (local) AWS profile can be configured in `.theodorc`:
 - `THEODO_SCAN_BUCKET_NAME`: S3 bucket name for SBOM uploads
-- `THEODO_SCAN_AWS_PROFILE`: AWS CLI profile to use
+- `THEODO_SCAN_LOCAL_AWS_PROFILE`: AWS CLI profile to use for local runs (ignored in CI)
 
 Command-line flags (`--bucket`, `--profile`) take precedence over `.theodorc` values.
 
@@ -319,6 +321,32 @@ theodo-scan upload --bucket my-bucket
 theodo-scan upload --bucket my-bucket --profile my-aws-profile
 theodo-scan upload --bucket my-bucket --file ./custom-sbom.json
 ```
+
+#### CI usage
+
+When the standard `CI` environment variable is set (GitHub Actions, GitLab CI, Bitbucket Pipelines, CircleCI, and most other providers set it automatically), `theodo-scan upload` ignores `THEODO_SCAN_LOCAL_AWS_PROFILE` / `--profile` and falls back to the default AWS credential chain. This lets you authenticate without long-lived AWS keys.
+
+**Recommended: OIDC + per-CI IAM role.** Each provider can issue an OIDC token that is exchanged for short-lived AWS credentials via `sts:AssumeRoleWithWebIdentity`. Scope the role's policy to the prefix the SBOM is uploaded to so each CI can only write to its own folder:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject"],
+      "Resource": "arn:aws:s3:::<bucket>/sboms/<org>-<project>-<component>/*"
+    }
+  ]
+}
+```
+
+Provider docs:
+- GitHub Actions — [Configuring OpenID Connect in AWS](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services). Use `aws-actions/configure-aws-credentials` with `role-to-assume`.
+- GitLab CI — [Configure OpenID Connect with AWS](https://docs.gitlab.com/ee/ci/cloud_services/aws/). Use `aws sts assume-role-with-web-identity` with the GitLab-injected `CI_JOB_JWT_V2`.
+- Bitbucket Pipelines — [Deploy on AWS using OpenID Connect](https://support.atlassian.com/bitbucket-cloud/docs/deploy-on-aws-using-bitbucket-pipelines-openid-connect/). Use the `oidc` step option.
+
+**Alternative: AWS access keys as CI secrets.** Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and (optionally) `AWS_SESSION_TOKEN` and `AWS_REGION` as CI secrets. The AWS CLI picks them up automatically. OIDC is preferred since it avoids long-lived credentials.
 
 ### Hello Command
 
