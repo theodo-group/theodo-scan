@@ -91,13 +91,13 @@ export THEODO_SCAN_BUCKET_NAME="watchtower-prod-s3bucketbucket-ubzdhdmf"
 export THEODO_SCAN_AWS_PROFILE="watchtower"
 EOF
 
-    # Add .theodo/theodo-scan-sbom.json to .gitignore if it exists
+    # Add .theodo/sbom.json to .gitignore if it exists
     if [ -f ".gitignore" ]; then
-        if ! grep -qxF '.theodo/theodo-scan-sbom.json' .gitignore; then
-            echo '.theodo/theodo-scan-sbom.json' >> .gitignore
-            print_success "Added .theodo/theodo-scan-sbom.json to .gitignore"
+        if ! grep -qxF '.theodo/sbom.json' .gitignore; then
+            echo '.theodo/sbom.json' >> .gitignore
+            print_success "Added .theodo/sbom.json to .gitignore"
         else
-            print_info ".theodo/theodo-scan-sbom.json already in .gitignore"
+            print_info ".theodo/sbom.json already in .gitignore"
         fi
     fi
 
