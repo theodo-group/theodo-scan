@@ -101,7 +101,7 @@ This command:
    - Updates the component name to `{ORG}-{PROJECT}-{COMPONENT}`
    - Adds structured metadata properties for organization, project, and component
 6. Flags dev-only dependencies with a `theodo:dev` property
-7. Flags every library with a `theodo:direct` property (`"true"` for direct dependencies and workspaces, `"false"` for transitive ones)
+7. Flags libraries with a `theodo:direct` property (`"true"` for direct dependencies and workspaces, `"false"` for transitive ones, absent when the lockfile does not tell)
 
 **Output Location:** `.theodo/sbom.json`
 
@@ -195,7 +195,15 @@ The `theodo-scan scan` command makes the following modifications to the Trivy-ge
 
    **Technical Implementation:** Trivy is run twice — once without `--include-dev-deps` (production-only) and once with it (all dependencies). Any component present in the full SBOM but absent from the production SBOM is considered dev-only and flagged. The intermediate production SBOM is removed after the diff.
 
-4. **Direct Dependency Flagging**: Every component of type `library` is tagged with a `theodo:direct` property in its `properties` array: `"true"` when it is a direct dependency of the project or one of its workspaces, `"false"` when it is only pulled in transitively. Every library is tagged, so a consumer can tell a transitive dependency (`"false"`) from an SBOM produced before this property existed (property absent).
+4. **Direct Dependency Flagging**: Every component of type `library` is tagged with a `theodo:direct` property in its `properties` array: `"true"` when it is a direct dependency of the project or one of its workspaces, `"false"` when it is only pulled in transitively. Every library whose relationship is known is tagged, so a consumer can tell a transitive dependency (`"false"`) from an unknown one (property absent: SBOM produced before this property existed, or lockfile without a dependency graph).
+
+   | Lockfile | `theodo:direct` |
+   |---|---|
+   | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock` | `"true"` / `"false"` |
+   | `composer.lock` | `"true"` / `"false"` |
+   | `poetry.lock`, `uv.lock` | `"true"` / `"false"` |
+   | `pom.xml` | `"true"` / `"false"` |
+   | `requirements.txt`, `Pipfile.lock`, `gradle.lockfile` | absent (Trivy reports no relationship) |
 
    **Technical Implementation:** The CycloneDX SBOM does not tell direct and transitive dependencies apart, so Trivy is run a third time with `--list-all-pkgs --format json`, whose report carries a `Relationship` for each package. The PURLs of packages whose relationship is `direct` or `workspace` are collected, along with the dependencies of every workspace, and each SBOM library is flagged according to whether its `purl` is in that set. The intermediate JSON report is removed afterwards.
 

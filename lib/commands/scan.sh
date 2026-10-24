@@ -34,8 +34,9 @@ This command:
   4. Updates the component name with your project identification
   5. Adds detected languages as framework components in the SBOM
   6. Flags dev-only dependencies with a "theodo:dev" property
-  7. Flags every library with a "theodo:direct" property ("true" for direct
-     dependencies and workspaces, "false" for transitive ones)
+  7. Flags libraries with a "theodo:direct" property ("true" for direct
+     dependencies and workspaces, "false" for transitive ones, absent when
+     the lockfile does not tell)
 
 Options:
     -h, --help          Show this help message
@@ -145,8 +146,11 @@ EOF
             '. + {($target): $names}' <<< "$NPM_WORKSPACES")
     done < <(jq -r '.Results[]? | select(.Type == "npm") | .Target' "${PACKAGES_FILE}")
 
-    # Direct = direct or workspace packages, plus dependencies declared by a workspace
-    DIRECT_PURLS=$(jq --argjson npmWorkspaces "${NPM_WORKSPACES}" '[
+    # Direct = direct or workspace packages, plus dependencies declared by a workspace.
+    # Lockfiles without a dependency graph (requirements.txt, Pipfile.lock, gradle.lockfile)
+    # report no relationship: those packages are left unflagged rather than flagged "false".
+    # Result: {purl: "true" | "false"}, purls with an unknown relationship are absent
+    DIRECT_FLAGS=$(jq --argjson npmWorkspaces "${NPM_WORKSPACES}" '[
         .Results[]?
         | .Target as $target
         | (.Packages // []) as $packages
@@ -156,21 +160,30 @@ EOF
             | map(.DependsOn // []) | add // []
           ) as $workspaceDeps
         | $packages[]
-        | select(
-            .Relationship == "direct" or .Relationship == "workspace"
-            or (.ID as $id | $workspaceDeps | index($id))
-          )
-        | .Identifier.PURL // empty
-    ] | unique' "${PACKAGES_FILE}")
+        | select(.Identifier.PURL != null)
+        | {
+            purl: .Identifier.PURL,
+            flag: (
+                if .Relationship == "direct" or .Relationship == "workspace"
+                    or (.ID as $id | $workspaceDeps | index($id)) then "true"
+                elif .Relationship == "root" or .Relationship == "indirect" then "false"
+                else "unknown"
+                end
+            )
+          }
+    ]
+    | group_by(.purl)
+    | map({
+        key: .[0].purl,
+        value: (map(.flag) | if index("true") then "true" elif index("unknown") then null else "false" end)
+      })
+    | map(select(.value != null))
+    | from_entries' "${PACKAGES_FILE}")
 
-    if ! jq --argjson direct "${DIRECT_PURLS}" '
-        ($direct | map({(.): true}) | add // {}) as $directSet |
+    if ! jq --argjson flags "${DIRECT_FLAGS}" '
         .components |= map(
-            if .type == "library" then
-                .properties = ((.properties // []) + [{
-                    "name": "theodo:direct",
-                    "value": (if (.purl != null and $directSet[.purl]) then "true" else "false" end)
-                }])
+            if .type == "library" and .purl != null and $flags[.purl] != null then
+                .properties = ((.properties // []) + [{"name": "theodo:direct", "value": $flags[.purl]}])
             else
                 .
             end
