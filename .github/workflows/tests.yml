@@ -1,0 +1,19 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same version as EXPECTED_TRIVY_VERSION in tests/run.sh
+      - uses: aquasecurity/setup-trivy@v0.2.3
+        with:
+          version: v0.76.1
+
+      - run: tests/run.sh

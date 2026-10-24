@@ -144,7 +144,7 @@ detect_nodejs_version() {
         if [ -n "$installed_version" ]; then
             version=$(parse_node_version "$installed_version")
             if [ -n "$version" ]; then
-                print_warning "No .nvmrc or .node-version found, using installed Node.js version: $version"
+                print_warning "No .nvmrc or .node-version found, using installed Node.js version: $version" >&2
                 echo "$version"
                 return 0
             fi

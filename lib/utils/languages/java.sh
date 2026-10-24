@@ -19,7 +19,7 @@ detect_java_version() {
     if command_exists "java"; then
         version=$(java -version 2>&1 | sed -n 's/.*version "\([0-9.]*\).*/\1/p' | head -1)
         if [ -n "$version" ]; then
-            print_warning "No .java-version found, using installed Java version: $version"
+            print_warning "No .java-version found, using installed Java version: $version" >&2
             echo "$version"
             return 0
         fi

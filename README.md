@@ -45,6 +45,23 @@ No need to reinstall after updates!
 thedo-scan my-new-command
 ```
 
+### Tests
+
+`tests/run.sh` runs `theodo-scan scan` on every project of `tests/fixtures/` (one per supported lockfile type) and compares the SBOM with `tests/expected/<fixture>.json`:
+
+```bash
+tests/run.sh                  # all fixtures
+tests/run.sh npm maven        # some fixtures
+tests/run.sh --update         # accept the current output as expected
+```
+
+The comparison is made on a normalized SBOM: components with their `type`, `group`, `name`, `version`, `purl` and `theodo:*` properties, and the metadata `theodo:*` properties. Serial numbers, timestamps, UUID `bom-ref`s and Trivy metadata are left out.
+
+- The tests run in GitHub Actions (`.github/workflows/tests.yml`) on every pull request and every push to `main`.
+- The expected SBOMs are generated with Trivy 0.76.1: a different version prints a warning and may change the output. Bump the version in the workflow along with `EXPECTED_TRIVY_VERSION` in `tests/run.sh`.
+- The Maven fixture needs network access: Trivy resolves `pom.xml` dependencies from Maven Central.
+- To cover a new project type, add a directory in `tests/fixtures/` with its manifest, its lockfile, a `.theodorc` and a runtime version file (`.nvmrc`, `.python-version`, `.php-version`, `.java-version`) so that the result does not depend on the installed runtimes, then run `tests/run.sh --update <fixture>` and review the generated file.
+
 ## Uninstall
 
 ```bash
@@ -101,6 +118,7 @@ This command:
    - Updates the component name to `{ORG}-{PROJECT}-{COMPONENT}`
    - Adds structured metadata properties for organization, project, and component
 6. Flags dev-only dependencies with a `theodo:dev` property
+7. Flags libraries with a `theodo:direct` property (`"true"` for direct dependencies and workspaces, `"false"` for transitive ones, absent when the lockfile does not tell)
 
 **Output Location:** `.theodo/sbom.json`
 
@@ -192,7 +210,25 @@ The `theodo-scan scan` command makes the following modifications to the Trivy-ge
 
 3. **Dev-Only Dependency Flagging**: Components that are only used as development dependencies are tagged with a `theodo:dev` property set to `"true"` in the component's `properties` array. Production dependencies are left untagged.
 
-   **Technical Implementation:** Trivy is run twice — once without `--include-dev-deps` (production-only) and once with it (all dependencies). Any component present in the full SBOM but absent from the production SBOM is considered dev-only and flagged. The intermediate production SBOM is removed after the diff.
+   **Technical Implementation:** Trivy is run twice — once without `--include-dev-deps` (production-only) and once with it (all dependencies). Any component whose `purl` is present in the full SBOM but absent from the production SBOM is considered dev-only and flagged. Components are compared by `purl` because Trivy gives a random `bom-ref` to lockfile components and to packages listed by several lockfiles; components without a `purl` are never flagged. The intermediate production SBOM is removed after the diff.
+
+   **Maven `test` scope:** Trivy drops `test`-scope dependencies of `pom.xml` files. When a `pom.xml` declares one, theodo-scan copies the `pom.xml` files to a temporary directory with the `test` scope turned into `compile`, runs Trivy on that copy, and adds the extra packages (with their dependencies, resolved by Trivy from the parent POMs and the remote repositories) to the SBOM. Absent from the production SBOM, they are flagged as dev-only.
+
+   **Pipfile.lock:** Trivy only reads the `default` section of `Pipfile.lock`. The packages of its `develop` section are added to the SBOM by theodo-scan (as `pkg:pypi` libraries depending on the `Pipfile.lock` component), and are flagged as dev-only since they are absent from the production SBOM.
+
+4. **Direct Dependency Flagging**: Every component of type `library` is tagged with a `theodo:direct` property in its `properties` array: `"true"` when it is a direct dependency of the project or one of its workspaces, `"false"` when it is only pulled in transitively. Every library whose relationship is known is tagged, so a consumer can tell a transitive dependency (`"false"`) from an unknown one (property absent: SBOM produced before this property existed, or lockfile without a dependency graph).
+
+   | Lockfile | `theodo:direct` |
+   |---|---|
+   | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock` | `"true"` / `"false"` |
+   | `composer.lock` | `"true"` / `"false"` |
+   | `poetry.lock`, `uv.lock` | `"true"` / `"false"` |
+   | `pom.xml` | `"true"` / `"false"` |
+   | `requirements.txt`, `Pipfile.lock`, `gradle.lockfile` | absent (Trivy reports no relationship) |
+
+   **Technical Implementation:** The CycloneDX SBOM does not tell direct and transitive dependencies apart, so Trivy is run a third time with `--list-all-pkgs --format json`, whose report carries a `Relationship` for each package. The PURLs of packages whose relationship is `direct` or `workspace` are collected, along with the dependencies of every workspace, and each SBOM library is flagged according to whether its `purl` is in that set. The intermediate JSON report is removed afterwards.
+
+   **npm workspaces:** with `package-lock.json`, Trivy reports workspaces as direct dependencies of the root and their own dependencies as indirect. Workspaces are therefore read from the lockfile (entries with `"link": true`) so that the dependencies they declare are flagged as direct, as they are with pnpm and yarn. The project root itself (yarn's `root` relationship) is flagged `"false"`.
 
 #### Language Detection
 

@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "name": "theodo-fixtures-npm",
+    "properties": [
+      {
+        "name": "theodo:component",
+        "value": "npm"
+      },
+      {
+        "name": "theodo:org",
+        "value": "theodo"
+      },
+      {
+        "name": "theodo:project",
+        "value": "fixtures"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "application",
+      "name": "package-lock.json",
+      "properties": []
+    },
+    {
+      "type": "framework",
+      "name": "nodejs",
+      "version": "22",
+      "purl": "pkg:generic/nodejs@22",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "name": "debug",
+      "version": "4.3.4",
+      "purl": "pkg:npm/debug@4.3.4",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        },
+        {
+          "name": "theodo:direct",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "is-number",
+      "version": "6.0.0",
+      "purl": "pkg:npm/is-number@6.0.0",
+      "properties": [
+        {
+          "name": "theodo:direct",
+          "value": "false"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "is-odd",
+      "version": "3.0.1",
+      "purl": "pkg:npm/is-odd@3.0.1",
+      "properties": [
+        {
+          "name": "theodo:direct",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "ms",
+      "version": "2.1.2",
+      "purl": "pkg:npm/ms@2.1.2",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        },
+        {
+          "name": "theodo:direct",
+          "value": "false"
+        }
+      ]
+    }
+  ]
+}
