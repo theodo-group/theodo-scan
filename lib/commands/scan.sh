@@ -131,9 +131,35 @@ EOF
     # Flag every library component as direct or not
     print_info "Flagging direct dependencies..."
 
-    DIRECT_PURLS=$(jq '[
-        .Results[]?.Packages[]?
-        | select(.Relationship == "direct" or .Relationship == "workspace")
+    # Trivy reports npm workspaces as direct dependencies of the root and their own
+    # dependencies as indirect: list npm workspaces (linked packages) per lockfile
+    NPM_WORKSPACES="{}"
+    while IFS= read -r lockfile; do
+        [ -f "$lockfile" ] || continue
+        names=$(jq '[
+            .packages // {} | to_entries[]
+            | select(.value.link == true)
+            | .key | sub("^(.*/)?node_modules/"; "")
+        ]' "$lockfile" 2>/dev/null) || names="[]"
+        NPM_WORKSPACES=$(jq --arg target "$lockfile" --argjson names "$names" \
+            '. + {($target): $names}' <<< "$NPM_WORKSPACES")
+    done < <(jq -r '.Results[]? | select(.Type == "npm") | .Target' "${PACKAGES_FILE}")
+
+    # Direct = direct or workspace packages, plus dependencies declared by a workspace
+    DIRECT_PURLS=$(jq --argjson npmWorkspaces "${NPM_WORKSPACES}" '[
+        .Results[]?
+        | .Target as $target
+        | (.Packages // []) as $packages
+        | ($npmWorkspaces[$target] // []) as $workspaceNames
+        | ($packages
+            | map(select(.Relationship == "workspace" or (.Name as $n | $workspaceNames | index($n))))
+            | map(.DependsOn // []) | add // []
+          ) as $workspaceDeps
+        | $packages[]
+        | select(
+            .Relationship == "direct" or .Relationship == "workspace"
+            or (.ID as $id | $workspaceDeps | index($id))
+          )
         | .Identifier.PURL // empty
     ] | unique' "${PACKAGES_FILE}")
 

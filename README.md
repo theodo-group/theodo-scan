@@ -197,7 +197,9 @@ The `theodo-scan scan` command makes the following modifications to the Trivy-ge
 
 4. **Direct Dependency Flagging**: Every component of type `library` is tagged with a `theodo:direct` property in its `properties` array: `"true"` when it is a direct dependency of the project or one of its workspaces, `"false"` when it is only pulled in transitively. Every library is tagged, so a consumer can tell a transitive dependency (`"false"`) from an SBOM produced before this property existed (property absent).
 
-   **Technical Implementation:** The CycloneDX SBOM does not tell direct and transitive dependencies apart, so Trivy is run a third time with `--list-all-pkgs --format json`, whose report carries a `Relationship` for each package. The PURLs of packages whose relationship is `direct` or `workspace` are collected, and each SBOM library is flagged according to whether its `purl` is in that set. The intermediate JSON report is removed afterwards. How precisely relationships are reported depends on the Trivy version and the lockfile type.
+   **Technical Implementation:** The CycloneDX SBOM does not tell direct and transitive dependencies apart, so Trivy is run a third time with `--list-all-pkgs --format json`, whose report carries a `Relationship` for each package. The PURLs of packages whose relationship is `direct` or `workspace` are collected, along with the dependencies of every workspace, and each SBOM library is flagged according to whether its `purl` is in that set. The intermediate JSON report is removed afterwards.
+
+   **npm workspaces:** with `package-lock.json`, Trivy reports workspaces as direct dependencies of the root and their own dependencies as indirect. Workspaces are therefore read from the lockfile (entries with `"link": true`) so that the dependencies they declare are flagged as direct, as they are with pnpm and yarn. The project root itself (yarn's `root` relationship) is flagged `"false"`.
 
 #### Language Detection
 
