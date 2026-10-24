@@ -95,6 +95,17 @@ EOF
 
     echo ""
 
+    # Run Trivy package listing (JSON report exposes the direct/indirect relationship, the SBOM does not)
+    print_info "Running Trivy package listing (direct dependencies)..."
+    echo ""
+
+    if ! trivy fs --scanners "" --include-dev-deps --list-all-pkgs --format json -o "${PACKAGES_FILE}" .; then
+        print_error "Trivy package listing failed"
+        exit 1
+    fi
+
+    echo ""
+
     # Trivy only reads the default section of Pipfile.lock: add the develop packages
     # (absent from the production SBOM, they are then flagged as dev)
     while IFS=$'\t' read -r app_ref lockfile; do
@@ -140,6 +151,93 @@ EOF
         | [."bom-ref", .name] | @tsv
     ' "${SBOM_FILE}")
 
+    # Trivy drops Maven test-scope dependencies: scan a copy of the pom.xml files where the
+    # test scope is turned into compile scope, and add what it finds to the SBOM and to the
+    # package listing (absent from the production SBOM, the added packages are flagged as dev)
+    TEST_SCOPE_PATTERN='<scope>[[:space:]]*test[[:space:]]*</scope>'
+    POM_FILES=()
+    HAS_TEST_SCOPE=false
+    while IFS= read -r pom; do
+        POM_FILES+=("$pom")
+        if grep -qE "$TEST_SCOPE_PATTERN" "$pom"; then
+            HAS_TEST_SCOPE=true
+        fi
+    done < <(find . -name pom.xml -not -path '*/node_modules/*' -not -path '*/target/*' -not -path '*/.git/*')
+
+    if [ "$HAS_TEST_SCOPE" = true ]; then
+        print_info "Running Trivy scan (Maven test dependencies)..."
+        echo ""
+
+        if ! MAVEN_TEST_DIR=$(mktemp -d) || [ -z "$MAVEN_TEST_DIR" ]; then
+            print_error "Failed to create a temporary directory"
+            exit 1
+        fi
+        MAVEN_TEST_SBOM_FILE="$(pwd)/${SBOM_DIR}/sbom.maven-test.json"
+        MAVEN_TEST_PACKAGES_FILE="$(pwd)/${SBOM_DIR}/packages.maven-test.json"
+
+        for pom in "${POM_FILES[@]}"; do
+            mkdir -p "${MAVEN_TEST_DIR}/$(dirname "$pom")"
+            sed -E "s#${TEST_SCOPE_PATTERN}#<scope>compile</scope>#g" "$pom" > "${MAVEN_TEST_DIR}/${pom}"
+        done
+
+        if ! (cd "$MAVEN_TEST_DIR" \
+            && trivy fs --include-dev-deps --format cyclonedx -o "${MAVEN_TEST_SBOM_FILE}" . \
+            && trivy fs --scanners "" --include-dev-deps --list-all-pkgs --format json -o "${MAVEN_TEST_PACKAGES_FILE}" .); then
+            rm -rf "${MAVEN_TEST_DIR:?}"
+            print_error "Trivy scan failed (Maven test dependencies)"
+            exit 1
+        fi
+
+        rm -rf "${MAVEN_TEST_DIR:?}"
+        echo ""
+
+        # Add the missing libraries (one per purl) and merge the dependency graph. Both SBOMs
+        # are matched by purl: Trivy gives a random bom-ref to packages listed by several
+        # pom.xml files (multi-module projects)
+        if ! jq --slurpfile test "${MAVEN_TEST_SBOM_FILE}" '
+            $test[0] as $t
+            | ([$t.components[]? | select(.purl != null) | {key: ."bom-ref", value: .purl}] | from_entries) as $testRefToPurl
+            | ([.components[]? | select(.purl != null) | {key: ."bom-ref", value: .purl}] | from_entries) as $refToPurl
+            | ([.components[]? | select(.purl != null)] | group_by(.purl) | map({key: .[0].purl, value: .[0]."bom-ref"}) | from_entries) as $purlToRef
+            | ([
+                $t.components[]?
+                | select(.type == "library" and .purl != null and ($purlToRef[.purl] | not))
+              ] | group_by(.purl) | map(.[0] | ."bom-ref" = .purl)) as $new
+            | ($purlToRef + ($new | map({key: .purl, value: .purl}) | from_entries)) as $purlToRef
+            | ([
+                $t.dependencies[]?
+                | select($testRefToPurl[.ref] != null)
+                | {purl: $testRefToPurl[.ref], dependsOn: [.dependsOn[]? | $testRefToPurl[.] // empty | $purlToRef[.] // empty]}
+              ] | group_by(.purl) | map({key: .[0].purl, value: (map(.dependsOn[]) | unique)}) | from_entries) as $testDeps
+            | .components = ((.components // []) + $new)
+            | .dependencies = (
+                ((.dependencies // []) | map(
+                    ([.dependsOn[]? | $refToPurl[.] // .]) as $existingPurls
+                    | [
+                        ($testDeps[$refToPurl[.ref] // ""] // [])[]
+                        | select(($refToPurl[.] // .) as $p | $existingPurls | index($p) | not)
+                      ] as $added
+                    | if ($added | length) > 0 then .dependsOn = ((.dependsOn // []) + $added | unique) else . end
+                ))
+                + [$new[] | {"ref": ."bom-ref", "dependsOn": ($testDeps[.purl] // [])}]
+              )
+        ' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
+            print_error "Failed to add Maven test dependencies"
+            exit 1
+        fi
+
+        mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
+
+        if ! jq -s '.[0].Results = ((.[0].Results // []) + (.[1].Results // [])) | .[0]' \
+            "${PACKAGES_FILE}" "${MAVEN_TEST_PACKAGES_FILE}" > "${PACKAGES_FILE}.tmp"; then
+            print_error "Failed to add Maven test dependencies to the package listing"
+            exit 1
+        fi
+
+        mv "${PACKAGES_FILE}.tmp" "${PACKAGES_FILE}"
+        rm -f "${MAVEN_TEST_SBOM_FILE}" "${MAVEN_TEST_PACKAGES_FILE}"
+    fi
+
     # Flag dev-only components (present in full SBOM but not in production SBOM)
     print_info "Flagging dev-only dependencies..."
 
@@ -162,17 +260,6 @@ EOF
 
     mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
     rm -f "${SBOM_PROD_FILE}"
-
-    echo ""
-
-    # Run Trivy package listing (JSON report exposes the direct/indirect relationship, the SBOM does not)
-    print_info "Running Trivy package listing (direct dependencies)..."
-    echo ""
-
-    if ! trivy fs --scanners "" --include-dev-deps --list-all-pkgs --format json -o "${PACKAGES_FILE}" .; then
-        print_error "Trivy package listing failed"
-        exit 1
-    fi
 
     echo ""
 
