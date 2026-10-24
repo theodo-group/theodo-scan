@@ -95,6 +95,51 @@ EOF
 
     echo ""
 
+    # Trivy only reads the default section of Pipfile.lock: add the develop packages
+    # (absent from the production SBOM, they are then flagged as dev)
+    while IFS=$'\t' read -r app_ref lockfile; do
+        [ -f "$lockfile" ] || continue
+        print_info "Adding develop packages of ${lockfile}..."
+
+        develop=$(jq '[
+            .develop // {} | to_entries[]
+            | select(.value.version != null)
+            | {name: .key, version: (.value.version | ltrimstr("=="))}
+        ]' "$lockfile") || develop="[]"
+
+        if ! jq --arg app "$app_ref" --argjson develop "$develop" '
+            ([.components[]?.purl // empty] | map({(.): true}) | add // {}) as $existing
+            | [
+                $develop[]
+                | . + {purl: ("pkg:pypi/" + (.name | ascii_downcase | gsub("[-_.]+"; "-")) + "@" + .version)}
+                | select($existing[.purl] | not)
+              ] as $new
+            | .components = ((.components // []) + [
+                $new[] | {
+                    "bom-ref": .purl,
+                    "type": "library",
+                    "name": .name,
+                    "version": .version,
+                    "purl": .purl,
+                    "properties": [{"name": "aquasecurity:trivy:PkgType", "value": "pipenv"}]
+                }
+              ])
+            | .dependencies = (
+                ((.dependencies // []) | map(if .ref == $app then .dependsOn += [$new[].purl] else . end))
+                + [$new[] | {"ref": .purl, "dependsOn": []}]
+              )
+        ' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
+            print_error "Failed to add develop packages of ${lockfile}"
+            exit 1
+        fi
+
+        mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
+    done < <(jq -r '
+        .components[]?
+        | select(.type == "application" and any(.properties[]?; .name == "aquasecurity:trivy:Type" and .value == "pipenv"))
+        | [."bom-ref", .name] | @tsv
+    ' "${SBOM_FILE}")
+
     # Flag dev-only components (present in full SBOM but not in production SBOM)
     print_info "Flagging dev-only dependencies..."
 
