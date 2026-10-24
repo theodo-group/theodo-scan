@@ -169,7 +169,7 @@ EOF
     print_info "Running Trivy package listing (direct dependencies)..."
     echo ""
 
-    if ! trivy fs --include-dev-deps --list-all-pkgs --format json -o "${PACKAGES_FILE}" .; then
+    if ! trivy fs --scanners "" --include-dev-deps --list-all-pkgs --format json -o "${PACKAGES_FILE}" .; then
         print_error "Trivy package listing failed"
         exit 1
     fi
