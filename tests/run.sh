@@ -72,8 +72,11 @@ if [ "$trivy_version" != "$EXPECTED_TRIVY_VERSION" ]; then
     echo "Warning: expected SBOMs were generated with Trivy $EXPECTED_TRIVY_VERSION, running Trivy ${trivy_version:-unknown}" >&2
 fi
 
-work_dir=$(mktemp -d)
-trap 'rm -rf "$work_dir"' EXIT
+if ! work_dir=$(mktemp -d) || [ -z "$work_dir" ]; then
+    echo "Failed to create a temporary directory" >&2
+    exit 1
+fi
+trap 'rm -rf "${work_dir:?}"' EXIT
 
 mkdir -p "$EXPECTED_DIR"
 failures=0
