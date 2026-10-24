@@ -45,6 +45,22 @@ No need to reinstall after updates!
 thedo-scan my-new-command
 ```
 
+### Tests
+
+`tests/run.sh` runs `theodo-scan scan` on every project of `tests/fixtures/` (one per supported lockfile type) and compares the SBOM with `tests/expected/<fixture>.json`:
+
+```bash
+tests/run.sh                  # all fixtures
+tests/run.sh npm maven        # some fixtures
+tests/run.sh --update         # accept the current output as expected
+```
+
+The comparison is made on a normalized SBOM: components with their `type`, `group`, `name`, `version`, `purl` and `theodo:*` properties, and the metadata `theodo:*` properties. Serial numbers, timestamps, UUID `bom-ref`s and Trivy metadata are left out.
+
+- The expected SBOMs are generated with Trivy 0.76.1: a different version prints a warning and may change the output.
+- The Maven fixture needs network access: Trivy resolves `pom.xml` dependencies from Maven Central.
+- To cover a new project type, add a directory in `tests/fixtures/` with its manifest, its lockfile, a `.theodorc` and a runtime version file (`.nvmrc`, `.python-version`, `.php-version`, `.java-version`) so that the result does not depend on the installed runtimes, then run `tests/run.sh --update <fixture>` and review the generated file.
+
 ## Uninstall
 
 ```bash

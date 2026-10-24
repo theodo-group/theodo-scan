@@ -1,0 +1,110 @@
+{
+  "metadata": {
+    "name": "theodo-fixtures-composer",
+    "properties": [
+      {
+        "name": "theodo:component",
+        "value": "composer"
+      },
+      {
+        "name": "theodo:org",
+        "value": "theodo"
+      },
+      {
+        "name": "theodo:project",
+        "value": "fixtures"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "application",
+      "name": "composer.lock",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "name": "php",
+      "version": "8.3",
+      "purl": "pkg:generic/php@8.3",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "name": "monolog/monolog",
+      "version": "3.12.1",
+      "purl": "pkg:composer/monolog/monolog@3.12.1",
+      "properties": [
+        {
+          "name": "theodo:direct",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "psr/log",
+      "version": "3.0.2",
+      "purl": "pkg:composer/psr/log@3.0.2",
+      "properties": [
+        {
+          "name": "theodo:direct",
+          "value": "false"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "symfony/deprecation-contracts",
+      "version": "v3.7.1",
+      "purl": "pkg:composer/symfony/deprecation-contracts@v3.7.1",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        },
+        {
+          "name": "theodo:direct",
+          "value": "false"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "symfony/polyfill-mbstring",
+      "version": "v1.43.0",
+      "purl": "pkg:composer/symfony/polyfill-mbstring@v1.43.0",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        },
+        {
+          "name": "theodo:direct",
+          "value": "false"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "symfony/var-dumper",
+      "version": "v7.4.21",
+      "purl": "pkg:composer/symfony/var-dumper@v7.4.21",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        },
+        {
+          "name": "theodo:direct",
+          "value": "true"
+        }
+      ]
+    }
+  ]
+}

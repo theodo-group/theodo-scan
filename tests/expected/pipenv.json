@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "name": "theodo-fixtures-pipenv",
+    "properties": [
+      {
+        "name": "theodo:component",
+        "value": "pipenv"
+      },
+      {
+        "name": "theodo:org",
+        "value": "theodo"
+      },
+      {
+        "name": "theodo:project",
+        "value": "fixtures"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "application",
+      "name": "Pipfile.lock",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "name": "python",
+      "version": "3.12",
+      "purl": "pkg:generic/python@3.12",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "name": "certifi",
+      "version": "2026.10.23",
+      "purl": "pkg:pypi/certifi@2026.10.23",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "name": "charset-normalizer",
+      "version": "3.5.2",
+      "purl": "pkg:pypi/charset-normalizer@3.5.2",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "name": "idna",
+      "version": "3.20",
+      "purl": "pkg:pypi/idna@3.20",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "name": "requests",
+      "version": "2.32.3",
+      "purl": "pkg:pypi/requests@2.32.3",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "name": "urllib3",
+      "version": "2.6.3",
+      "purl": "pkg:pypi/urllib3@2.6.3",
+      "properties": []
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "name": "theodo-fixtures-maven",
+    "properties": [
+      {
+        "name": "theodo:component",
+        "value": "maven"
+      },
+      {
+        "name": "theodo:org",
+        "value": "theodo"
+      },
+      {
+        "name": "theodo:project",
+        "value": "fixtures"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "application",
+      "name": "pom.xml",
+      "properties": [
+        {
+          "name": "theodo:dev",
+          "value": "true"
+        }
+      ]
+    },
+    {
+      "type": "framework",
+      "name": "java",
+      "version": "21",
+      "purl": "pkg:generic/java@21",
+      "properties": []
+    },
+    {
+      "type": "library",
+      "group": "fx",
+      "name": "app",
+      "version": "1.0.0",
+      "purl": "pkg:maven/fx/app@1.0.0",
+      "properties": [
+        {
+          "name": "theodo:direct",
+          "value": "false"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "group": "org.apache.commons",
+      "name": "commons-lang3",
+      "version": "3.14.0",
+      "purl": "pkg:maven/org.apache.commons/commons-lang3@3.14.0",
+      "properties": [
+        {
+          "name": "theodo:direct",
+          "value": "false"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "group": "org.apache.commons",
+      "name": "commons-text",
+      "version": "1.12.0",
+      "purl": "pkg:maven/org.apache.commons/commons-text@1.12.0",
+      "properties": [
+        {
+          "name": "theodo:direct",
+          "value": "true"
+        }
+      ]
+    }
+  ]
+}
