@@ -34,6 +34,8 @@ This command:
   4. Updates the component name with your project identification
   5. Adds detected languages as framework components in the SBOM
   6. Flags dev-only dependencies with a "theodo:dev" property
+  7. Flags every library with a "theodo:direct" property ("true" for direct
+     dependencies and workspaces, "false" for transitive ones)
 
 Options:
     -h, --help          Show this help message
@@ -62,6 +64,7 @@ EOF
     SBOM_DIR=".theodo"
     SBOM_FILE="${SBOM_DIR}/sbom.json"
     SBOM_PROD_FILE="${SBOM_DIR}/sbom.prod.json"
+    PACKAGES_FILE="${SBOM_DIR}/packages.json"
 
     # Create .theodo directory if it doesn't exist
     if [ ! -d "$SBOM_DIR" ]; then
@@ -111,6 +114,48 @@ EOF
 
     mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
     rm -f "${SBOM_PROD_FILE}"
+
+    echo ""
+
+    # Run Trivy package listing (JSON report exposes the direct/indirect relationship, the SBOM does not)
+    print_info "Running Trivy package listing (direct dependencies)..."
+    echo ""
+
+    if ! trivy fs --include-dev-deps --list-all-pkgs --format json -o "${PACKAGES_FILE}" .; then
+        print_error "Trivy package listing failed"
+        exit 1
+    fi
+
+    echo ""
+
+    # Flag every library component as direct or not
+    print_info "Flagging direct dependencies..."
+
+    DIRECT_PURLS=$(jq '[
+        .Results[]?.Packages[]?
+        | select(.Relationship == "direct" or .Relationship == "workspace")
+        | .Identifier.PURL // empty
+    ] | unique' "${PACKAGES_FILE}")
+
+    if ! jq --argjson direct "${DIRECT_PURLS}" '
+        ($direct | map({(.): true}) | add // {}) as $directSet |
+        .components |= map(
+            if .type == "library" then
+                .properties = ((.properties // []) + [{
+                    "name": "theodo:direct",
+                    "value": (if (.purl != null and $directSet[.purl]) then "true" else "false" end)
+                }])
+            else
+                .
+            end
+        )
+    ' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
+        print_error "Failed to flag direct dependencies"
+        exit 1
+    fi
+
+    mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
+    rm -f "${PACKAGES_FILE}"
 
     echo ""
 
