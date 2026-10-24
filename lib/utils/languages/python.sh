@@ -155,7 +155,7 @@ detect_python_version() {
         if [ -n "$installed_version" ]; then
             version=$(parse_python_version "$installed_version")
             if [ -n "$version" ]; then
-                print_warning "No .python-version or pyproject.toml found, using installed Python version: $version"
+                print_warning "No .python-version or pyproject.toml found, using installed Python version: $version" >&2
                 echo "$version"
                 return 0
             fi
@@ -166,7 +166,7 @@ detect_python_version() {
         if [ -n "$installed_version" ]; then
             version=$(parse_python_version "$installed_version")
             if [ -n "$version" ]; then
-                print_warning "No .python-version or pyproject.toml found, using installed Python version: $version"
+                print_warning "No .python-version or pyproject.toml found, using installed Python version: $version" >&2
                 echo "$version"
                 return 0
             fi

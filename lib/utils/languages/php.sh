@@ -105,7 +105,7 @@ detect_php_version() {
         if [ -n "$installed_version" ]; then
             version=$(parse_php_version "$installed_version")
             if [ -n "$version" ]; then
-                print_warning "No .php-version found, using installed PHP version: $version"
+                print_warning "No .php-version found, using installed PHP version: $version" >&2
                 echo "$version"
                 return 0
             fi
