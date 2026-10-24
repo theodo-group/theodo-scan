@@ -57,7 +57,8 @@ tests/run.sh --update         # accept the current output as expected
 
 The comparison is made on a normalized SBOM: components with their `type`, `group`, `name`, `version`, `purl` and `theodo:*` properties, and the metadata `theodo:*` properties. Serial numbers, timestamps, UUID `bom-ref`s and Trivy metadata are left out.
 
-- The expected SBOMs are generated with Trivy 0.76.1: a different version prints a warning and may change the output.
+- The tests run in GitHub Actions (`.github/workflows/tests.yml`) on every pull request and every push to `main`.
+- The expected SBOMs are generated with Trivy 0.76.1: a different version prints a warning and may change the output. Bump the version in the workflow along with `EXPECTED_TRIVY_VERSION` in `tests/run.sh`.
 - The Maven fixture needs network access: Trivy resolves `pom.xml` dependencies from Maven Central.
 - To cover a new project type, add a directory in `tests/fixtures/` with its manifest, its lockfile, a `.theodorc` and a runtime version file (`.nvmrc`, `.python-version`, `.php-version`, `.java-version`) so that the result does not depend on the installed runtimes, then run `tests/run.sh --update <fixture>` and review the generated file.
 
