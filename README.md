@@ -209,7 +209,7 @@ The `theodo-scan scan` command makes the following modifications to the Trivy-ge
 
 3. **Dev-Only Dependency Flagging**: Components that are only used as development dependencies are tagged with a `theodo:dev` property set to `"true"` in the component's `properties` array. Production dependencies are left untagged.
 
-   **Technical Implementation:** Trivy is run twice — once without `--include-dev-deps` (production-only) and once with it (all dependencies). Any component present in the full SBOM but absent from the production SBOM is considered dev-only and flagged. The intermediate production SBOM is removed after the diff.
+   **Technical Implementation:** Trivy is run twice — once without `--include-dev-deps` (production-only) and once with it (all dependencies). Any component whose `purl` is present in the full SBOM but absent from the production SBOM is considered dev-only and flagged. Components are compared by `purl` because Trivy gives a random `bom-ref` to lockfile components and to packages listed by several lockfiles; components without a `purl` are never flagged. The intermediate production SBOM is removed after the diff.
 
 4. **Direct Dependency Flagging**: Every component of type `library` is tagged with a `theodo:direct` property in its `properties` array: `"true"` when it is a direct dependency of the project or one of its workspaces, `"false"` when it is only pulled in transitively. Every library whose relationship is known is tagged, so a consumer can tell a transitive dependency (`"false"`) from an unknown one (property absent: SBOM produced before this property existed, or lockfile without a dependency graph).
 

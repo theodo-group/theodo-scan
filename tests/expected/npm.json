@@ -20,12 +20,7 @@
     {
       "type": "application",
       "name": "package-lock.json",
-      "properties": [
-        {
-          "name": "theodo:dev",
-          "value": "true"
-        }
-      ]
+      "properties": []
     },
     {
       "type": "framework",

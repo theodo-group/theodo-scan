@@ -20,12 +20,7 @@
     {
       "type": "application",
       "name": "Pipfile.lock",
-      "properties": [
-        {
-          "name": "theodo:dev",
-          "value": "true"
-        }
-      ]
+      "properties": []
     },
     {
       "type": "framework",

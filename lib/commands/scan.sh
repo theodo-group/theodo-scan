@@ -98,11 +98,13 @@ EOF
     # Flag dev-only components (present in full SBOM but not in production SBOM)
     print_info "Flagging dev-only dependencies..."
 
-    PROD_REFS=$(jq '[.components[]?."bom-ref"]' "${SBOM_PROD_FILE}")
+    # Compared by purl: components listed by several lockfiles, and lockfile components,
+    # get a random UUID bom-ref that differs between the two runs
+    PROD_PURLS=$(jq '[.components[]?.purl // empty] | unique | map({(.): true}) | add // {}' "${SBOM_PROD_FILE}")
 
-    if ! jq --argjson prod "${PROD_REFS}" '
+    if ! jq --argjson prod "${PROD_PURLS}" '
         .components |= map(
-            if (."bom-ref" as $r | $prod | index($r)) then
+            if .purl == null or $prod[.purl] then
                 .
             else
                 .properties = ((.properties // []) + [{"name": "theodo:dev", "value": "true"}])

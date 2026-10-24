@@ -20,12 +20,7 @@
     {
       "type": "application",
       "name": "uv.lock",
-      "properties": [
-        {
-          "name": "theodo:dev",
-          "value": "true"
-        }
-      ]
+      "properties": []
     },
     {
       "type": "framework",

@@ -20,22 +20,12 @@
     {
       "type": "application",
       "name": "poetry.lock",
-      "properties": [
-        {
-          "name": "theodo:dev",
-          "value": "true"
-        }
-      ]
+      "properties": []
     },
     {
       "type": "application",
       "name": "requirements.txt",
-      "properties": [
-        {
-          "name": "theodo:dev",
-          "value": "true"
-        }
-      ]
+      "properties": []
     },
     {
       "type": "framework",
@@ -204,10 +194,6 @@
       "purl": "pkg:pypi/requests@2.32.3",
       "properties": [
         {
-          "name": "theodo:dev",
-          "value": "true"
-        },
-        {
           "name": "theodo:direct",
           "value": "true"
         }
@@ -219,10 +205,6 @@
       "version": "2.32.3",
       "purl": "pkg:pypi/requests@2.32.3",
       "properties": [
-        {
-          "name": "theodo:dev",
-          "value": "true"
-        },
         {
           "name": "theodo:direct",
           "value": "true"
