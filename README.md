@@ -119,6 +119,7 @@ This command:
    - Adds structured metadata properties for organization, project, and component
 6. Flags dev-only dependencies with a `theodo:dev` property
 7. Flags libraries with a `theodo:direct` property (`"true"` for direct dependencies and workspaces, `"false"` for transitive ones, absent when the lockfile does not tell)
+8. Reports the vulnerabilities ignored in `.trivyignore` in a `theodo:ignored-cves` metadata property
 
 **Output Location:** `.theodo/sbom.json`
 
@@ -170,6 +171,10 @@ The generated SBOM follows the [CycloneDX 1.6 specification](https://cyclonedx.o
       {
         "name": "theodo:component",
         "value": "backend"
+      },
+      {
+        "name": "theodo:ignored-cves",
+        "value": "[]"
       }
     ]
   },
@@ -229,6 +234,20 @@ The `theodo-scan scan` command makes the following modifications to the Trivy-ge
    **Technical Implementation:** The CycloneDX SBOM does not tell direct and transitive dependencies apart, so Trivy is run a third time with `--list-all-pkgs --format json`, whose report carries a `Relationship` for each package. The PURLs of packages whose relationship is `direct` or `workspace` are collected, along with the dependencies of every workspace, and each SBOM library is flagged according to whether its `purl` is in that set. The intermediate JSON report is removed afterwards.
 
    **npm workspaces:** with `package-lock.json`, Trivy reports workspaces as direct dependencies of the root and their own dependencies as indirect. Workspaces are therefore read from the lockfile (entries with `"link": true`) so that the dependencies they declare are flagged as direct, as they are with pnpm and yarn. The project root itself (yarn's `root` relationship) is flagged `"false"`.
+
+5. **Ignored Vulnerabilities**: The vulnerabilities listed in the project's `.trivyignore` are reported in a `theodo:ignored-cves` metadata property. Since vulnerabilities are scanned from the uploaded SBOM, not by theodo-scan, Trivy has no finding to filter here: the property is how the ignore list reaches the SBOM consumer. Its value is a JSON-encoded array (CycloneDX property values are strings) of `{id, exp, reason}` objects:
+   - `id` - The ignored ID (`CVE-…`, `GHSA-…`, …)
+   - `exp` - The `exp:YYYY-MM-DD` expiration date of the entry, or `null`
+   - `reason` - The comment lines right above the entry, joined by newlines, or `null`. A comment block applies to every entry that follows it until a blank line.
+
+   ```
+   # Only used by the dev server, never exposed
+   CVE-2024-4067 exp:2027-01-01
+   ```
+
+   gives `[{"id":"CVE-2024-4067","exp":"2027-01-01","reason":"Only used by the dev server, never exposed"}]`.
+
+   The property is always written, as `"[]"` when there is no `.trivyignore`, so a consumer can tell a project without ignores from an SBOM produced before this property existed (property absent). Only `.trivyignore` at the root of the scanned directory is read; `.trivyignore.yaml` is not supported.
 
 #### Language Detection
 
