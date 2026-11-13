@@ -7,6 +7,10 @@
         "value": "npm-workspaces"
       },
       {
+        "name": "theodo:ignored-cves",
+        "value": "[]"
+      },
+      {
         "name": "theodo:org",
         "value": "theodo"
       },

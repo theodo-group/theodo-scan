@@ -37,6 +37,8 @@ This command:
   7. Flags libraries with a "theodo:direct" property ("true" for direct
      dependencies and workspaces, "false" for transitive ones, absent when
      the lockfile does not tell)
+  8. Reports the vulnerabilities ignored in .trivyignore in a
+     "theodo:ignored-cves" metadata property
 
 Options:
     -h, --help          Show this help message
@@ -202,16 +204,50 @@ EOF
     print_info "  - Project: $THEODO_SCAN_PROJECT"
     print_info "  - Component: $THEODO_SCAN_COMPONENT"
 
+    # Report the vulnerabilities ignored in .trivyignore: [{id, exp, reason}], exp and reason
+    # null when absent. The reason is the comment block right above the entry (shared by
+    # consecutive entries, reset by a blank line). Always written, even as [], so that a
+    # consumer tells "no ignores" from an SBOM produced before this property existed.
+    IGNORED_CVES="[]"
+    if [ -f ".trivyignore" ]; then
+        if ! IGNORED_CVES=$(jq -R -n '
+            reduce (inputs | gsub("^\\s+|\\s+$"; "")) as $line (
+                {entries: [], reason: [], afterEntry: false};
+                if $line == "" then
+                    .reason = [] | .afterEntry = false
+                elif $line | startswith("#") then
+                    (if .afterEntry then .reason = [] else . end)
+                    | .reason += [$line | ltrimstr("#") | gsub("^\\s+"; "")]
+                    | .afterEntry = false
+                else
+                    [$line | splits("\\s+")] as $fields
+                    | .entries += [{
+                        id: $fields[0],
+                        exp: ([$fields[1:][] | select(startswith("exp:")) | ltrimstr("exp:")] | first),
+                        reason: (.reason | map(select(. != "")) | if length == 0 then null else join("\n") end)
+                      }]
+                    | .afterEntry = true
+                end
+            )
+            | .entries' .trivyignore); then
+            print_error "Failed to read .trivyignore"
+            exit 1
+        fi
+    fi
+    print_info "  - Ignored vulnerabilities: $(jq length <<< "${IGNORED_CVES}")"
+
     if ! jq --arg name "${COMPONENT_NAME}" \
             --arg org "${THEODO_SCAN_ORG}" \
             --arg project "${THEODO_SCAN_PROJECT}" \
-            --arg component "${THEODO_SCAN_COMPONENT}" '
+            --arg component "${THEODO_SCAN_COMPONENT}" \
+            --argjson ignoredCves "${IGNORED_CVES}" '
         .metadata.component.name = $name |
         .metadata.properties = (.metadata.properties // []) |
         .metadata.properties += [
             {"name": "theodo:org", "value": $org},
             {"name": "theodo:project", "value": $project},
-            {"name": "theodo:component", "value": $component}
+            {"name": "theodo:component", "value": $component},
+            {"name": "theodo:ignored-cves", "value": ($ignoredCves | tojson)}
         ]
     ' "${SBOM_FILE}" > "${SBOM_FILE}.tmp"; then
         print_error "Failed to update SBOM metadata"
