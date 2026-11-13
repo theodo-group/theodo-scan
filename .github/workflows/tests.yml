@@ -12,8 +12,19 @@ jobs:
       - uses: actions/checkout@v4
 
       # Same version as EXPECTED_TRIVY_VERSION in tests/run.sh
-      - uses: aquasecurity/setup-trivy@v0.2.3
+      - uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
         with:
           version: v0.76.1
+
+      # Trivy reads Maven POMs from ~/.m2 before Maven Central, which rate-limits
+      # shared runner IPs (429): fill ~/.m2 once per fixture change and cache it
+      - uses: actions/cache@v4
+        id: m2
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('tests/fixtures/**/pom.xml') }}
+
+      - if: steps.m2.outputs.cache-hit != 'true'
+        run: for pom in tests/fixtures/*/pom.xml; do mvn -B -q dependency:resolve -f "$pom"; done
 
       - run: tests/run.sh
