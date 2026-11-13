@@ -16,4 +16,15 @@ jobs:
         with:
           version: v0.76.1
 
+      # Trivy reads Maven POMs from ~/.m2 before Maven Central, which rate-limits
+      # shared runner IPs (429): fill ~/.m2 once per fixture change and cache it
+      - uses: actions/cache@v4
+        id: m2
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('tests/fixtures/**/pom.xml') }}
+
+      - if: steps.m2.outputs.cache-hit != 'true'
+        run: for pom in tests/fixtures/*/pom.xml; do mvn -B -q dependency:resolve -f "$pom"; done
+
       - run: tests/run.sh
