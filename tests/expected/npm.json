@@ -7,6 +7,10 @@
         "value": "npm"
       },
       {
+        "name": "theodo:ignored-cves",
+        "value": "[{\"id\":\"CVE-2024-4067\",\"exp\":\"2027-01-01\",\"reason\":\"Only used by the dev server, never exposed\"},{\"id\":\"GHSA-952p-6rrq-rcjv\",\"exp\":null,\"reason\":null}]"
+      },
+      {
         "name": "theodo:org",
         "value": "theodo"
       },

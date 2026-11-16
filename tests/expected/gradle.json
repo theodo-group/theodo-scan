@@ -7,6 +7,10 @@
         "value": "gradle"
       },
       {
+        "name": "theodo:ignored-cves",
+        "value": "[]"
+      },
+      {
         "name": "theodo:org",
         "value": "theodo"
       },
