@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: aquasecurity/setup-trivy@v0.2.0
+      - uses: aquasecurity/setup-trivy@v0.3.1
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
