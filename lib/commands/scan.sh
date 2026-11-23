@@ -116,11 +116,13 @@ EOF
     print_info "Flagging dev-only dependencies..."
 
     # Compared by purl: components listed by several lockfiles, and lockfile components,
-    # get a random UUID bom-ref that differs between the two runs
-    PROD_PURLS=$(jq '[.components[]?.purl // empty] | unique | map({(.): true}) | add // {}' "${SBOM_PROD_FILE}")
-
-    if ! jq --argjson prod "${PROD_PURLS}" '
-        .components |= map(
+    # get a random UUID bom-ref that differs between the two runs.
+    # The production SBOM is read with --slurpfile, never passed as an argument: on a large
+    # project the purl list exceeds Linux's per-argument limit (MAX_ARG_STRLEN, 128 KiB)
+    # and jq fails with "Argument list too long".
+    if ! jq --slurpfile prodSbom "${SBOM_PROD_FILE}" '
+        ([$prodSbom[0].components[]?.purl // empty] | unique | map({(.): true}) | add // {}) as $prod
+        | .components |= map(
             if .purl == null or $prod[.purl] then
                 .
             else
@@ -147,8 +149,11 @@ EOF
     # Direct = direct or workspace packages, plus dependencies declared by a workspace.
     # Lockfiles without a dependency graph (requirements.txt, Pipfile.lock, gradle.lockfile)
     # report no relationship: those packages are left unflagged rather than flagged "false".
-    # Result: {purl: "true" | "false"}, purls with an unknown relationship are absent
-    DIRECT_FLAGS=$(jq --argjson npmWorkspaces "${NPM_WORKSPACES}" '[
+    # Result: {purl: "true" | "false"}, purls with an unknown relationship are absent.
+    # Written to a file and read back with --slurpfile, for the same per-argument limit
+    # as the dev-only flags above.
+    DIRECT_FLAGS_FILE="${SBOM_DIR}/direct-flags.json"
+    if ! jq --argjson npmWorkspaces "${NPM_WORKSPACES}" '[
         .Results[]?
         | .Target as $target
         | (.Packages // []) as $packages
@@ -176,10 +181,14 @@ EOF
         value: (map(.flag) | if index("true") then "true" elif index("unknown") then null else "false" end)
       })
     | map(select(.value != null))
-    | from_entries' "${PACKAGES_FILE}")
+    | from_entries' "${PACKAGES_FILE}" > "${DIRECT_FLAGS_FILE}"; then
+        print_error "Failed to compute direct dependencies"
+        exit 1
+    fi
 
-    if ! jq --argjson flags "${DIRECT_FLAGS}" '
-        .components |= map(
+    if ! jq --slurpfile directFlags "${DIRECT_FLAGS_FILE}" '
+        $directFlags[0] as $flags
+        | .components |= map(
             if .type == "library" and .purl != null and $flags[.purl] != null then
                 .properties = ((.properties // []) + [{"name": "theodo:direct", "value": $flags[.purl]}])
             else
@@ -192,7 +201,7 @@ EOF
     fi
 
     mv "${SBOM_FILE}.tmp" "${SBOM_FILE}"
-    rm -f "${PACKAGES_FILE}"
+    rm -f "${PACKAGES_FILE}" "${DIRECT_FLAGS_FILE}"
 
     echo ""
 
